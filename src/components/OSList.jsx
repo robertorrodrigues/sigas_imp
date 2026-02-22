@@ -235,7 +235,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
             transition={{ delay: index * 0.1 }}
             className="p-6 hover:bg-white/5 transition-colors duration-200"
           >
-            <div className="flex items-start justify-between">
+            <div className="flex flex-col items-start justify-between">
               <div className="w-full space-y-3">
                 {/* Linha 1: OS número */}
                 <div className="flex items-center space-x-3">
@@ -298,10 +298,11 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                 </div>
               </div>
 
-              <div className="flex flex-wrap items-center gap-2 ml-4">
+              <div className="flex  items-center gap-2 ml-4">
                 <Button
                   onClick={() => onViewOS(ordem)}
                   variant="outline"
+                  title="Visualizar detalhes da OS"
                   size="sm"
                   className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
                 >
@@ -321,7 +322,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                       }
                     >
                       <PenTool className="w-4 h-4 mr-2" />
-                      {getSignatureStatus(ordem).hasTecnico ? '✓ Técnico' : 'Técnico'}
+                      {getSignatureStatus(ordem).hasTecnico ? '✓ Tec' : 'Tec'}
                     </Button>
 
                     <Button
@@ -335,17 +336,18 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                       }
                     >
                       <PenTool className="w-4 h-4 mr-2" />
-                      {getSignatureStatus(ordem).hasCliente ? '✓ Cliente' : 'Cliente'}
+                      {getSignatureStatus(ordem).hasCliente ? '✓ Cli' : 'Cli'}
                     </Button>
 
                     <Button
                       onClick={() => handleDownloadReport(ordem)}
                       variant="outline"
+                      title="Baixar relatório em PDF"
                       className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
                       disabled={saving}
                     >
                       <Download className="w-4 h-4 mr-2" />
-                      Baixar Relatório
+                      Relatório
                     </Button>
                   </>
                 )}
@@ -354,6 +356,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                   <Button
                     onClick={() => onStartInspection(ordem)}
                     size="sm"
+                    title={ordem.status === 'agendada' ? 'Executar Inspeção' : 'Continuar Inspeção'}
                     className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 w-full sm:w-auto"
                   >
                     <Play className="w-4 h-4 mr-1" />
