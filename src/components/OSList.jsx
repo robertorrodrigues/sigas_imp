@@ -306,7 +306,8 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                   size="sm"
                   className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
                 >
-                  <Eye className="w-4 h-4" />
+                  <Eye className="w-4 h-4 mr-2" />
+                  Detalhe
                 </Button>
 
                 {ordem.status === 'concluido' && (
@@ -314,6 +315,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                     <Button
                       onClick={() => handleOpenSignatureModal(ordem, 'tecnico')}
                       variant="outline"
+                      size="sm"
                       className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
                       title={
                         getSignatureStatus(ordem).hasTecnico
@@ -328,6 +330,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                     <Button
                       onClick={() => handleOpenSignatureModal(ordem, 'cliente')}
                       variant="outline"
+                      size="sm"
                       className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
                       title={
                         getSignatureStatus(ordem).hasCliente
@@ -342,6 +345,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                     <Button
                       onClick={() => handleDownloadReport(ordem)}
                       variant="outline"
+                      size="sm"
                       title="Baixar relatório em PDF"
                       className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
                       disabled={saving}
@@ -359,7 +363,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                     title={ordem.status === 'agendada' ? 'Executar Inspeção' : 'Continuar Inspeção'}
                     className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 w-full sm:w-auto"
                   >
-                    <Play className="w-4 h-4 mr-1" />
+                    <Play className="w-4 h-4 mr-2" />
                     {ordem.status === 'agendada' ? 'Iniciar' : 'Continuar'}
                   </Button>
                 )}
