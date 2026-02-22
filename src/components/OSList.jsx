@@ -347,7 +347,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                       disabled={saving}
                     >
                       <Download className="w-4 h-4 mr-2" />
-                      Relatório
+                      PDF
                     </Button>
                   </>
                 )}
