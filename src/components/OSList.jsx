@@ -236,9 +236,14 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
             className="p-6 hover:bg-white/5 transition-colors duration-200"
           >
             <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center space-x-3 mb-3">
+              <div className="w-full space-y-3">
+                {/* Linha 1: OS número */}
+                <div className="flex items-center space-x-3">
                   <span className="text-blue-400 font-medium">{ordem.numero}</span>
+                </div>
+
+                {/* Linha 2: Status + Norma */}
+                <div className="flex flex-wrap items-center gap-2">
                   <span
                     className={`px-2 py-1 rounded-full text-xs ${getStatusColor(
                       ordem.status
@@ -251,32 +256,45 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                   </span>
                 </div>
 
-                <h4 className="text-white font-semibold text-lg mb-2">
+                {/* Linha 3: Cliente */}
+                <h4 className="text-white font-semibold text-lg">
                   Cliente - {ordem.pedidos?.cliente_nome ?? '—'}
                 </h4>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-gray-300">
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <MapPin className="w-4 h-4 mr-2" />
-                      {ordem.endereco}, {ordem.cidade}, {ordem.estado}
-                    </div>
-                    <div className="flex items-center">
-                      <User className="w-4 h-4 mr-2" />
-                      {ordem.tecnico?.nome ?? '—'}
-                    </div>
-                  </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center">
-                      <Calendar className="w-4 h-4 mr-2" />
-                      {formatDate(ordem.data_agendada)}
-                    </div>
+                {/* Linha 4: Endereço */}
+                <div className="flex items-center text-sm text-gray-300">
+                  <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
+                  <span>{ordem.endereco}</span>
+                </div>
 
-                    <div className="flex items-center">
-                      <Clock className="w-4 h-4 mr-2" />
-                      {formatTime(ordem.data_agendada)}
-                    </div>
+                {/* Linha 5: Cidade + Estado */}
+                <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300">
+                  <div className="flex items-center">
+                    <span className="font-medium mr-1">Cidade:</span>
+                    {ordem.cidade}
                   </div>
+                  <div className="flex items-center">
+                    <span className="font-medium mr-1">Estado:</span>
+                    {ordem.estado}
+                  </div>
+                </div>
+
+                {/* Linha 6: Técnico */}
+                <div className="flex items-center text-sm text-gray-300">
+                  <User className="w-4 h-4 mr-2 flex-shrink-0" />
+                  {ordem.tecnico?.nome ?? '—'}
+                </div>
+
+                {/* Linha 7: Data Agendada */}
+                <div className="flex items-center text-sm text-gray-300">
+                  <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
+                  {formatDate(ordem.data_agendada)}
+                </div>
+
+                {/* Linha 8: Hora */}
+                <div className="flex items-center text-sm text-gray-300">
+                  <Clock className="w-4 h-4 mr-2 flex-shrink-0" />
+                  {formatTime(ordem.data_agendada)}
                 </div>
               </div>
 
