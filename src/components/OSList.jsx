@@ -297,8 +297,8 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                   {formatTime(ordem.data_agendada)}
                 </div>
               </div>
-
-              <div className="flex  items-center gap-2 ml-4">
+              <div className="h-4" />
+              <div className="flex  items-center justify-start gap-2 ml-4">
                 <Button
                   onClick={() => onViewOS(ordem)}
                   variant="outline"
@@ -306,8 +306,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                   size="sm"
                   className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
                 >
-                  <Eye className="w-4 h-4 mr-2" />
-                  Detalhe
+                  <Eye className="w-4 h-4" />
                 </Button>
 
                 {ordem.status === 'concluido' && (
