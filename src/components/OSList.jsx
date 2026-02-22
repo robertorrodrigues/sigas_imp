@@ -285,44 +285,50 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                   onClick={() => onViewOS(ordem)}
                   variant="outline"
                   size="sm"
-                  className="border-white/20 text-white hover:bg-white/10"
+                  className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
                 >
                   <Eye className="w-4 h-4" />
                 </Button>
 
                 {ordem.status === 'concluido' && (
                   <>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => handleOpenSignatureModal(ordem, 'tecnico')}
-                        variant="outline"
-                        className="border-white/20 text-white hover:bg-white/10"
-                        title={getSignatureStatus(ordem).hasTecnico ? '✓ Assinado pelo Técnico' : 'Assinatura do Técnico'}
-                      >
-                        <PenTool className="w-4 h-4 mr-2" />
-                        {getSignatureStatus(ordem).hasTecnico ? '✓ Técnico' : 'Técnico'}
-                      </Button>
+                    <Button
+                      onClick={() => handleOpenSignatureModal(ordem, 'tecnico')}
+                      variant="outline"
+                      className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
+                      title={
+                        getSignatureStatus(ordem).hasTecnico
+                          ? '✓ Assinado pelo Técnico'
+                          : 'Assinatura do Técnico'
+                      }
+                    >
+                      <PenTool className="w-4 h-4 mr-2" />
+                      {getSignatureStatus(ordem).hasTecnico ? '✓ Técnico' : 'Técnico'}
+                    </Button>
 
-                      <Button
-                        onClick={() => handleOpenSignatureModal(ordem, 'cliente')}
-                        variant="outline"
-                        className="border-white/20 text-white hover:bg-white/10"
-                        title={getSignatureStatus(ordem).hasCliente ? '✓ Assinado pelo Cliente' : 'Assinatura do Cliente'}
-                      >
-                        <PenTool className="w-4 h-4 mr-2" />
-                        {getSignatureStatus(ordem).hasCliente ? '✓ Cliente' : 'Cliente'}
-                      </Button>
+                    <Button
+                      onClick={() => handleOpenSignatureModal(ordem, 'cliente')}
+                      variant="outline"
+                      className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
+                      title={
+                        getSignatureStatus(ordem).hasCliente
+                          ? '✓ Assinado pelo Cliente'
+                          : 'Assinatura do Cliente'
+                      }
+                    >
+                      <PenTool className="w-4 h-4 mr-2" />
+                      {getSignatureStatus(ordem).hasCliente ? '✓ Cliente' : 'Cliente'}
+                    </Button>
 
-                      <Button
-                        onClick={() => handleDownloadReport(ordem)}
-                        variant="outline"
-                        className="border-white/20 text-white hover:bg-white/10"
-                        disabled={saving}
-                      >
-                        <Download className="w-4 h-4 mr-2" />
-                        Baixar Relatório
-                      </Button>
-                    </div>
+                    <Button
+                      onClick={() => handleDownloadReport(ordem)}
+                      variant="outline"
+                      className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
+                      disabled={saving}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      Baixar Relatório
+                    </Button>
                   </>
                 )}
 
@@ -330,7 +336,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                   <Button
                     onClick={() => onStartInspection(ordem)}
                     size="sm"
-                    className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700"
+                    className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 w-full sm:w-auto"
                   >
                     <Play className="w-4 h-4 mr-1" />
                     {ordem.status === 'agendada' ? 'Iniciar' : 'Continuar'}
