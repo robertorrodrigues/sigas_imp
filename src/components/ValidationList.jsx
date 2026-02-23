@@ -189,7 +189,7 @@ const ValidationList = ({ searchTerm, filterStatus, onSelectValidation, onSelect
                           )}
                         </div>
 
-                        <div className="flex items-center">
+                        <div className="flex flex-wrap items-center">
                           <Calendar className="w-4 h-4 mr-2" />
                           Concluído em{' '}
                           {validation?.ordem_servico?.data_conclusao
