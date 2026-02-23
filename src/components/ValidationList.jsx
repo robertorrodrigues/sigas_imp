@@ -146,7 +146,7 @@ const ValidationList = ({ searchTerm, filterStatus, onSelectValidation, onSelect
                   transition={{ delay: index * 0.05 }}
                   className="p-6 hover:bg-white/5 transition-colors duration-200"
                 >
-                  <div className="flex items-start justify-between">
+                  <div className="flex flex-col items-start justify-between">
                     <div className="flex-1">
                       <div className="flex items-center space-x-3 mb-3">
                         <span className="text-blue-400 font-medium">
@@ -206,12 +206,15 @@ const ValidationList = ({ searchTerm, filterStatus, onSelectValidation, onSelect
                         </div>
                       </div>
                     </div>
+                    <div className="h-4" />
 
                     {validation?.resultado !== 'Apto' && (
+                      
                       <div className="flex items-center ml-4">
                         <RTooltip.Root open={needsValidador ? undefined : undefined}>
                           <RTooltip.Trigger asChild>
                             {/* Wrapper div para permitir tooltip mesmo com Button disabled */}
+                           
                             <div className={needsValidador ? "cursor-not-allowed" : ""}>
                               <Button
                                 onClick={() => {
