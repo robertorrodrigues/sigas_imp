@@ -165,6 +165,7 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes }) => {
         <option value="em_progresso">Em Progresso</option>
         <option value="concluida">Concluída</option>
         <option value="cancelada">Cancelada</option>
+        <option value="encerrado">Encerrado</option>
       </select>
 
       <textarea
@@ -409,6 +410,7 @@ const OrdemServico = () => {
             <option value="em_progresso">Em Progresso</option>
             <option value="concluido">Concluída</option>
             <option value="cancelada">Cancelada</option>
+            <option value="encerrado">Encerrado</option>
           </select>
         </div>
       </motion.div>

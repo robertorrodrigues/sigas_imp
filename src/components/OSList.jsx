@@ -54,11 +54,11 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
 
   const getStatusColor = (status) => {
     const colors = {
-      agendada: 'bg-blue-500/20 text-blue-300',
-      em_andamento: 'bg-purple-500/20 text-purple-300',
-      concluida: 'bg-green-500/20 text-green-300',
-      validacao: 'bg-orange-500/20 text-orange-300',
-      aprovada: 'bg-emerald-500/20 text-emerald-300',
+      pendente: 'bg-red-400/20 text-red-300',
+      em_progresso: 'bg-purple-500/20 text-purple-300',
+      concluido: 'bg-green-500/20 text-green-300',
+      cancelada: 'bg-orange-500/20 text-orange-300',
+      encerrado: 'bg-red-500/20 text-green-300',
     };
     return colors[status] || 'bg-gray-500/20 text-gray-300';
   };
@@ -309,8 +309,10 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                   <Eye className="w-4 h-4" />
                 </Button>
 
-                {ordem.status === 'concluido' && (
+                {(ordem.status === 'concluido' || ordem.status === 'encerrado') && (
                   <>
+                  {ordem.status === 'concluido' && (
+                    <>
                     <Button
                       onClick={() => handleOpenSignatureModal(ordem, 'tecnico')}
                       variant="outline"
@@ -340,7 +342,8 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                       <PenTool className="w-4 h-4 mr-2" />
                       {getSignatureStatus(ordem).hasCliente ? '✓ Cli' : 'Cli'}
                     </Button>
-
+                    </>
+                    )}
                     <Button
                       onClick={() => handleDownloadReport(ordem)}
                       variant="outline"
@@ -359,11 +362,11 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                   <Button
                     onClick={() => onStartInspection(ordem)}
                     size="sm"
-                    title={ordem.status === 'agendada' ? 'Executar Inspeção' : 'Continuar Inspeção'}
+                    title={ordem.status === 'pendente' ? 'Executar Inspeção' : 'Continuar Inspeção'}
                     className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 w-full sm:w-auto"
                   >
                     <Play className="w-4 h-4 mr-2" />
-                    {ordem.status === 'agendada' ? 'Iniciar' : 'Continuar'}
+                    {ordem.status === 'pendente' ? 'Iniciar' : 'Continuar'}
                   </Button>
                 )}
               </div>
