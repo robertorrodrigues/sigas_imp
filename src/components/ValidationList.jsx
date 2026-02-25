@@ -157,9 +157,9 @@ const ValidationList = ({ searchTerm, filterStatus, onSelectValidation, onSelect
                           {String(validation.status).toUpperCase()}
                         </span>
 
-                        <span className={`px-2 py-1 rounded-full text-xs ${getResultColor(validation.resultado)}`}>
+                        {/* <span className={`px-2 py-1 rounded-full text-xs ${getResultColor(validation.resultado)}`}>
                           {validation.resultado}
-                        </span>
+                        </span> */}
                       </div>
 
                       <h4 className="text-white font-semibold text-lg mb-2">

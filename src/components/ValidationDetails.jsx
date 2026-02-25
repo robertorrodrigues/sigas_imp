@@ -104,7 +104,7 @@ const ValidationDetails = ({ validation, onClose }) => {
 
       // - Resultado Array no supabase - 'Apto', 'Apto com restrições', 'Não apto'
 
-      const { error } = await supabase
+      const { error: validacaoError } = await supabase
         .from("validacoes")
         .update({
           resultado,                 // grava o resultado
@@ -115,11 +115,47 @@ const ValidationDetails = ({ validation, onClose }) => {
         })
         .eq("id", validation.id);
 
-      if (error) throw error;
+      if (validacaoError) throw validacaoError;
+
+      // 2) Se Apto → encerra a OS
+      if (resultado === "Apto") {
+        const { error: osError } = await supabase
+          .from("ordem_servico")
+          .update({
+            status: "encerrado"
+            //data_encerramento: new Date().toISOString() // opcional se tiver essa coluna
+          })
+          .eq("id", validation.osId);
+
+        if (osError) throw osError;
+      }
+
+      // 3) Busca o cliente_id da OS (necessário para atualizar o pedido)
+  const { data: osRow, error: osFetchError } = await supabase
+    .from("ordem_servico")
+    .select("cliente_id")
+    .eq("id", validation.osId)
+    .single();
+
+  if (osFetchError) throw osFetchError;
+  if (!osRow?.cliente_id) {
+    throw new Error("ordem_servico não possui cliente_id para mapear o pedido.");
+  }
+
+  // 4) Atualiza o pedido cujo id = cliente_id da OS
+  const { error: pedidoError } = await supabase
+    .from("pedidos") 
+    .update({
+      status: "concluido",
+    })
+    .eq("id", osRow.cliente_id);
+
+  if (pedidoError) throw pedidoError;
+
 
       toast({
         title: `Inspeção ${resultado}!`,
-        description: `OS ${validation.osId} foi marcada como ${resultado}.`
+        description: `OS ${validation.osId} foi marcada como ${resultado}.` + (resultado === "Apto" ? " Status da OS: encerrado." : "")
       });
 
       onClose();
