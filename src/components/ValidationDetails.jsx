@@ -102,7 +102,7 @@ const ValidationDetails = ({ validation, onClose }) => {
       const { data: userData } = await supabase.auth.getUser();
       const validatedBy = userData?.user?.id ?? null;
 
-      // - Resultado Array no supabase - 'Apto', 'Apto com restrições', 'Não apto'
+      // - Resultado Array no supabase - 'Apto',  'Não apto'
 
       const { error: validacaoError } = await supabase
         .from("validacoes")
@@ -123,35 +123,44 @@ const ValidationDetails = ({ validation, onClose }) => {
           .from("ordem_servico")
           .update({
             status: "encerrado"
-            //data_encerramento: new Date().toISOString() // opcional se tiver essa coluna
+          })
+          .eq("id", validation.osId);
+
+        if (osError) throw osError;
+      
+      // 3) Busca o cliente_id da OS (necessário para atualizar o pedido)
+      const { data: osRow, error: osFetchError } = await supabase
+        .from("ordem_servico")
+        .select("cliente_id")
+        .eq("id", validation.osId)
+        .single();
+
+      if (osFetchError) throw osFetchError;
+      if (!osRow?.cliente_id) {
+        throw new Error("ordem_servico não possui cliente_id para mapear o pedido.");
+      }
+
+      // 4) Atualiza o pedido cujo id = cliente_id da OS
+      const { error: pedidoError } = await supabase
+        .from("pedidos") 
+        .update({
+          status: "concluido",
+        })
+        .eq("id", osRow.cliente_id);
+
+      if (pedidoError) throw pedidoError;
+
+      } else if (resultado === "Não apto")  {
+        // 5) Se Não apto → OS altera a OS para em progresso
+        const { error: osError } = await supabase
+          .from("ordem_servico")
+          .update({
+            status: "em_progresso"
           })
           .eq("id", validation.osId);
 
         if (osError) throw osError;
       }
-
-      // 3) Busca o cliente_id da OS (necessário para atualizar o pedido)
-  const { data: osRow, error: osFetchError } = await supabase
-    .from("ordem_servico")
-    .select("cliente_id")
-    .eq("id", validation.osId)
-    .single();
-
-  if (osFetchError) throw osFetchError;
-  if (!osRow?.cliente_id) {
-    throw new Error("ordem_servico não possui cliente_id para mapear o pedido.");
-  }
-
-  // 4) Atualiza o pedido cujo id = cliente_id da OS
-  const { error: pedidoError } = await supabase
-    .from("pedidos") 
-    .update({
-      status: "concluido",
-    })
-    .eq("id", osRow.cliente_id);
-
-  if (pedidoError) throw pedidoError;
-
 
       toast({
         title: `Inspeção ${resultado}!`,

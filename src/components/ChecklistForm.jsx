@@ -26,18 +26,26 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
         + `${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
  };
 
-  
-  
   // Itens que queremos sincronizar com o banco
   const itemIds = [
-    '1.1','1.2','1.3','1.4',
-    '2.1','2.2','2.3','2.4',
-    '3.1','3.2','3.3','3.4',
-    '4.1','4.2','4.3','4.4'
+    '1.1','1.2','1.3','1.4','1.5','1.6','1.7',
+    '2.1','2.2','2.3','2.4','2.5',
+    '3.1','3.2','4.1','4.2',
+    '5.1','6.1','6.2','6.3',
+    '7.1','8.1','9.1','9.2',
+    '10.1','10.2','10.3',
+    '11.1','11.2',
+    '12.1','12.2','12.3',
+    '13.1','14.1','14.2',
+    '15.1','15.2','16.1','17.1',
+    '18.1','18.2','19.1','19.2','19.3',
+    '20.1','20.2','21.1',
+    '22.1','22.2','22.3',
+    '23.1','24.1','25.1','26.1'
   ];
 
   // Total de itens do checklist para calcular status de conclusão
-  const TOTAL_ITEMS = 16;
+  const TOTAL_ITEMS = 54;
 
   // Mapeamento entre texto no BD e opção selecionada na UI
   const dbResultadoToUI = (r) => {

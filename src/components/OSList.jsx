@@ -317,7 +317,10 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                       onClick={() => handleOpenSignatureModal(ordem, 'tecnico')}
                       variant="outline"
                       size="sm"
-                      className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
+                      className={
+                        `w-full sm:w-auto border-white/20 text-white hover:bg-white/10 ` +
+                        (getSignatureStatus(ordem).hasTecnico ? ` bg-green-500/20 text-green-300 hover:bg-green-500/30 ` : ``)
+                      }
                       title={
                         getSignatureStatus(ordem).hasTecnico
                           ? '✓ Assinado pelo Técnico'
@@ -332,7 +335,10 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                       onClick={() => handleOpenSignatureModal(ordem, 'cliente')}
                       variant="outline"
                       size="sm"
-                      className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
+                      className={
+                        `w-full sm:w-auto border-white/20 text-white hover:bg-white/10 ` +
+                        (getSignatureStatus(ordem).hasCliente ? ` bg-green-500/20 text-green-300 hover:bg-green-500/30 ` : ``)
+                      }
                       title={
                         getSignatureStatus(ordem).hasCliente
                           ? '✓ Assinado pelo Cliente'
