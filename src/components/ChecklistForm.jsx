@@ -446,7 +446,7 @@ if (flagStatusConcluido) { novoStatus = 'concluido'; }
                         <span className="text-orange-400 text-xs font-semibold">FOTO</span>
                       )}
                     </div>
-                    <p className="text-white text-sm sm:text-base">{item.text}</p>
+                    <p className="text-white text-sm sm:text-base">{item.criterio_aceitacao}</p>
                   </div>
 
                   {item.photoRequired && (
@@ -503,8 +503,13 @@ if (flagStatusConcluido) { novoStatus = 'concluido'; }
 
                   {checklistData[item.id] === 'nao_conforme' && (
                     <textarea
-                      placeholder="Descreva a não conformidade..."
-                      value={observations[item.id] || ''}
+                      //placeholder="Descreva a não conformidade...teste1"
+                      
+                      value={
+                          observations[item.id] ??
+                          `${item.ocorrencia}  Prazo: ${item.prazo}`
+                        }
+
                       onChange={(e) => handleObservationChange(item.id, e.target.value)}
                       className="w-full mt-2 px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
                       rows={2}
