@@ -18,7 +18,8 @@ const PedidoForm = ({ pedido, onClose, onSubmit }) => {
     telefone: '',
     prioridade: 'normal',
     status: 'pendente',
-    observacoes: ''
+    observacoes: '',
+    codigoNaturgy: '',
   });
 
   const handleSubmit = (e) => {
@@ -45,7 +46,7 @@ const PedidoForm = ({ pedido, onClose, onSubmit }) => {
         className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20 w-full max-w-2xl max-h-[90vh] overflow-y-auto"
       >
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-2xl font-bold text-white">Novo Pedido de Inspeção</h2>
+          <h2 className="text-2xl font-bold text-white">{pedido ? 'Editar Pedido de Inspeção' : 'Novo Pedido de Inspeção'}</h2>
           <button
             onClick={onClose}
             className="text-gray-400 hover:text-white transition-colors"
@@ -77,7 +78,7 @@ const PedidoForm = ({ pedido, onClose, onSubmit }) => {
               <select
                 value={formData.tipo}
                 onChange={(e) => setFormData({...formData, tipo: e.target.value})}
-                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="w-full px-4 py-3 bg-slate-800 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 <option value="residencial">Residencial</option>
                 <option value="comercial">Comercial</option>
@@ -144,7 +145,6 @@ const PedidoForm = ({ pedido, onClose, onSubmit }) => {
                 placeholder="email@exemplo.com"
               />
             </div>
-
             <div>
               <label className="block text-white text-sm font-medium mb-2">
                 Telefone
@@ -160,6 +160,21 @@ const PedidoForm = ({ pedido, onClose, onSubmit }) => {
             </div>
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+              <label className="block text-white text-sm font-medium mb-2">
+                Código Naturgy
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.codigoNaturgy}
+                onChange={(e) => setFormData({...formData, codigoNaturgy: e.target.value})}
+                className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="9999999-9"
+              />
+          </div>
+
           <div>
             <label className="block text-white text-sm font-medium mb-2">
               Prioridade
@@ -167,7 +182,7 @@ const PedidoForm = ({ pedido, onClose, onSubmit }) => {
             <select
               value={formData.prioridade}
               onChange={(e) => setFormData({...formData, prioridade: e.target.value})}
-              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-4 py-3 bg-slate-800 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="baixa">Baixa</option>
               <option value="normal">Normal</option>
@@ -175,6 +190,7 @@ const PedidoForm = ({ pedido, onClose, onSubmit }) => {
               <option value="urgente">Urgente</option>
             </select>
           </div>
+          </div>  
 
           <div>
             <label className="block text-white text-sm font-medium mb-2">
@@ -225,7 +241,7 @@ const PedidoForm = ({ pedido, onClose, onSubmit }) => {
               type="submit"
               className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
             >
-              Criar Pedido
+              {pedido ? 'Salvar' : 'Cadastrar Pedido'}
             </Button>
           </div>
         </form>

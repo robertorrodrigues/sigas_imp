@@ -365,16 +365,30 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                 )}
 
                 {(ordem.status === 'em_progresso' || ordem.status === 'pendente') && (
-                  <Button
-                    onClick={() => onStartInspection(ordem)}
-                    size="sm"
-                    title={ordem.status === 'pendente' ? 'Executar Inspeção' : 'Continuar Inspeção'}
-                    className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 w-full sm:w-auto"
-                  >
-                    <Play className="w-4 h-4 mr-2" />
-                    {ordem.status === 'pendente' ? 'Iniciar' : 'Continuar'}
-                  </Button>
-                )}
+  <>
+    <Button
+      onClick={() => onStartInspection(ordem)}
+      size="sm"
+      title={ordem.status === 'pendente' ? 'Executar Inspeção' : 'Continuar Inspeção'}
+      className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 w-full sm:w-auto"
+    >
+      <Play className="w-4 h-4 mr-2" />
+      {ordem.status === 'pendente' ? 'Iniciar' : 'Continuar'}
+    </Button>
+
+    <Button
+      onClick={() => handleDownloadReport(ordem)}
+      variant="outline"
+      size="sm"
+      title="Baixar contrato em PDF"
+      className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
+      disabled={saving}
+    >
+      <Download className="w-4 h-4 mr-2" />
+      PDF Contrato
+    </Button>
+  </>
+)}
               </div>
             </div>
           </motion.div>

@@ -82,6 +82,7 @@ const Pedidos = () => {
             status: formData.status,
             observacoes: formData.observacoes,
             data_atualizacao: new Date().toISOString(),
+            cliente_naturgy: formData.codigoNaturgy,
           })
           .eq('id', editingPedido.id);
 
@@ -114,6 +115,7 @@ const Pedidos = () => {
             status: 'pendente',
             observacoes: formData.observacoes,
             criado_por: user?.id,
+            cliente_naturgy: formData.codigoNaturgy,
           }]);
 
         if (error) {
@@ -203,7 +205,7 @@ const Pedidos = () => {
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="todos">Todos</option>
               <option value="pendente">Pendente</option>
@@ -294,6 +296,7 @@ const Pedidos = () => {
                             prioridade: pedido.prioridade,
                             status: pedido.status,
                             observacoes: pedido.observacoes,
+                            codigoNaturgy: pedido.cliente_naturgy,
                           });
                           setShowForm(true);
                         }}
