@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, Play, MapPin, Calendar, User, Clock, Download, PenTool } from 'lucide-react';
@@ -5,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { supabase } from '@/lib/customSupabaseClient';
 import { generateInspectionReport } from '../utils/generateInspectionReport';
+import { generateContract } from '../utils/generateContract';
 import SignatureModal from './SignatureModal';
 
 const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
@@ -31,24 +33,31 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
             endereco,
             cidade,
             estado,
+            cep,
             data_agendada,
             data_conclusao,
             norma:norma_id(nome),
             tecnico:tecnico_id(nome),
             pedidos:cliente_id(
-              cliente_nome
+              cliente_nome,
+              endereco,
+              cidade,
+              cep,
+              data_criacao,
+              cliente_naturgy,
+              cpf_cnpj,
+              valor_servico,
+              telefone
             )
           `);
-
         if (error) throw error;
-        setOrdens(data || []);
+        setOrdens(data ?? []);
       } catch (err) {
         setError(err.message);
       } finally {
         setLoading(false);
       }
     };
-
     fetchOrdens();
   }, []);
 
@@ -60,27 +69,23 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
       cancelada: 'bg-orange-500/20 text-orange-300',
       encerrado: 'bg-red-500/20 text-green-300',
     };
-    return colors[status] || 'bg-gray-500/20 text-gray-300';
+    return colors[status] ?? 'bg-gray-500/20 text-gray-300';
   };
 
   const filteredOrdens = ordens.filter((ordem) => {
-    const term = (searchTerm || '').toLowerCase();
-
-    const clienteNome = ordem?.pedidos?.cliente_nome?.toLowerCase() || '';
-    const idStr = String(ordem?.id || '').toLowerCase();
-    const tecnicoNome = ordem?.tecnico?.nome?.toLowerCase() || '';
-    const numeroStr = String(ordem?.numero || '').toLowerCase();
-
+    const term = (searchTerm ?? '').toLowerCase();
+    const clienteNome = ordem?.pedidos?.cliente_nome?.toLowerCase() ?? '';
+    const idStr = String(ordem?.id ?? '').toLowerCase();
+    const tecnicoNome = ordem?.tecnico?.nome?.toLowerCase() ?? '';
+    const numeroStr = String(ordem?.numero ?? '').toLowerCase();
     const matchesSearch =
       term === '' ||
       clienteNome.includes(term) ||
       idStr.includes(term) ||
       tecnicoNome.includes(term) ||
       numeroStr.includes(term);
-
     const matchesStatus =
       !filterStatus || filterStatus === 'todos' || ordem.status === filterStatus;
-
     return matchesSearch && matchesStatus;
   });
 
@@ -88,14 +93,12 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
     try {
       setSaving(true);
       setLoadingChecklist(true);
-
       // Buscar checklist do Supabase filtrando pela OS
       const { data: checklistData, error: checklistError } = await supabase
         .from('checklist')
         .select('item_id, descricao, resultado, observacao, foto_url')
         .eq('os_id', ordem.id)
         .order('item_id', { ascending: true });
-
       if (checklistError) throw checklistError;
 
       const header = {
@@ -103,23 +106,100 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
         nomeCliente: ordem?.pedidos?.cliente_nome ?? '—',
         nomeTecnico: ordem?.tecnico?.nome ?? '—',
         dataConclusao: ordem?.data_conclusao ?? null,
-        //norma: ordem?.norma?.nome ?? '—',
       };
 
       const logoUrl = '/images/logoSigas.png';
-
       const signaturesToInclude = {
-        tecnico: signatures[`${ordem.id}-tecnico`] || null,
-        cliente: signatures[`${ordem.id}-cliente`] || null,
+        tecnico: signatures[`${ordem.id}-tecnico`] ?? null,
+        cliente: signatures[`${ordem.id}-cliente`] ?? null,
       };
 
       await generateInspectionReport({
         logoUrl,
         header,
-        checklist: checklistData || [],
+        checklist: checklistData ?? [],
         signatures: signaturesToInclude,
       });
+    } catch (e) {
+      console.error(e);
+      alert(`Falha ao gerar PDF: ${e?.message ?? 'Erro inesperado'}`);
+    } finally {
+      setSaving(false);
+      setLoadingChecklist(false);
+    }
+  };
 
+  const handleDownloadContract = async (ordem) => {
+    try {
+      setSaving(true);
+      setLoadingChecklist(true);
+
+      // Buscar checklist (opcional) - manter para anexar ao contrato ao final
+      //const { data: checklistData, error: checklistError } = await supabase
+      //  .from('checklist')
+      //  .select('item_id, descricao, resultado, observacao, foto_url')
+      //  .eq('os_id', ordem.id)
+      //  .order('item_id', { ascending: true });
+      //if (checklistError) throw checklistError;
+
+      // Buscar dados da EMPRESA (primeiro registro)
+      const { data: empresaRows, error: empresaError } = await supabase
+        .from('empresa')
+        .select('cnpj, nome, endereco, logo, assinatura, email, telefone, contato')
+        .limit(1);
+      if (empresaError) throw empresaError;
+      const empresa = (empresaRows && empresaRows[0]) ? empresaRows[0] : {};
+
+      // Montar header do contrato com dados vindos da tabela pedidos + empresa
+      const header = {
+        numeroOS: ordem?.numero ?? ordem?.id ?? '—',
+        dataContrato: ordem?.pedidos?.data_criacao ?? ordem?.data_agendada ?? ordem?.data_conclusao ?? null,
+        nomeCliente: ordem?.pedidos?.cliente_nome ?? '—',
+        cpfCnpj: ordem?.pedidos?.cpf_cnpj ?? '—',
+        numeroCliente: ordem?.pedidos?.cliente_naturgy ?? '—',
+        enderecoCompleto: [
+          ordem?.pedidos?.endereco,
+          ordem?.pedidos?.cidade,
+          ordem?.pedidos?.cep ? `CEP: ${ordem.pedidos.cep}` : null,
+        ].filter(Boolean).join(' - '),
+        telefone: ordem?.pedidos?.telefone ?? '—',
+        nomeTecnico: ordem?.tecnico?.nome ?? '—',
+        instrucaoNormativa: ordem?.norma?.nome ?? 'IN 48/2015',
+        servico: 'Inspeção Periódica de Gás',
+        tipoImovel: 'Residencial',
+        valorTotal: ordem?.pedidos?.valor_servico ?? 0,
+        dadosContratada: {
+          razaoSocial: empresa?.nome ?? '',
+          cnpj: empresa?.cnpj ?? '',
+          endereco: empresa?.endereco ?? '',
+          email: empresa?.email ?? '',
+          telefone: empresa?.telefone ?? '',
+          contato: empresa?.contato ?? '',
+          assinatura: empresa?.assinatura ?? null,
+        },
+      };
+
+      // Logo prioriza a da empresa (tabela empresa)
+      const logoUrl = empresa?.logo ?? '/images/logoSigas.png';
+
+      // Assinaturas: para CONTRATO, usar assinatura da Contratada (empresa) + assinatura do Cliente (capturada)
+      const signaturesToInclude = {
+        tecnico: header?.dadosContratada?.assinatura || signatures[`${ordem.id}-tecnico`] || null,
+        cliente: signatures[`${ordem.id}-cliente`] || null,
+      };
+
+      const signRoles = {
+        leftLabel: `Assinatura da Contratada${header?.dadosContratada?.razaoSocial ? `: ${header.dadosContratada.razaoSocial}` : ''}`,
+        rightLabel: `Assinatura do Contratante${header?.nomeCliente ? `: ${header.nomeCliente}` : ''}`,
+      };
+
+      await generateContract({
+        logoUrl,
+        header,
+        //checklist: checklistData ?? [],
+        signatures: signaturesToInclude,
+        signRoles,
+      });
     } catch (e) {
       console.error(e);
       alert(`Falha ao gerar PDF: ${e?.message ?? 'Erro inesperado'}`);
@@ -152,21 +232,17 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
         descricao: 'Assinaturas do técnico/cliente',
         updated_at: new Date().toISOString(),
       };
-
       if (signaturePersonType === 'tecnico') {
         upsertRow.img_ass_tec_url = signatureData;
-        upsertRow.img_ass_tec_metadata = JSON.stringify(metadata || {});
+        upsertRow.img_ass_tec_metadata = JSON.stringify(metadata ?? {});
       } else {
         upsertRow.img_ass_cli_url = signatureData;
-        upsertRow.img_ass_cli_metadata = JSON.stringify(metadata || {});
+        upsertRow.img_ass_cli_metadata = JSON.stringify(metadata ?? {});
       }
-
       const { error: upsertError } = await supabase
         .from('checklist')
         .upsert(upsertRow, { onConflict: 'os_id,item_id' });
-
       if (upsertError) throw upsertError;
-
       toast({ title: 'Assinatura salva', description: 'Assinatura persistida no banco.' });
     } catch (err) {
       console.error('Erro ao salvar assinatura:', err);
@@ -191,7 +267,6 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
       return '—';
     }
   };
-
   const formatTime = (iso) => {
     if (!iso) return '—';
     try {
@@ -209,7 +284,6 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
       </div>
     );
   }
-
   if (error) {
     return (
       <div className="bg-white/10 backdrop-blur-xl rounded-2xl border border-white/20 overflow-hidden p-6">
@@ -225,7 +299,6 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
           Ordens de Serviço ({filteredOrdens.length})
         </h3>
       </div>
-
       <div className="divide-y divide-white/10">
         {filteredOrdens.map((ordem, index) => (
           <motion.div
@@ -241,7 +314,6 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                 <div className="flex items-center space-x-3">
                   <span className="text-blue-400 font-medium">{ordem.numero}</span>
                 </div>
-
                 {/* Linha 2: Status + Norma */}
                 <div className="flex flex-wrap items-center gap-2">
                   <span
@@ -249,24 +321,24 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                       ordem.status
                     )}`}
                   >
-                    {String(ordem.status || '').replace('_', ' ').toUpperCase()}
+                    {String(ordem.status ?? '').replace('_', ' ').toUpperCase()}
                   </span>
                   <span className="px-2 py-1 rounded-full text-xs bg-gray-500/20 text-gray-300">
                     Norma - {ordem.norma?.nome ?? '48'}
                   </span>
                 </div>
-
                 {/* Linha 3: Cliente */}
                 <h4 className="text-white font-semibold text-lg">
                   Cliente - {ordem.pedidos?.cliente_nome ?? '—'}
                 </h4>
-
                 {/* Linha 4: Endereço */}
                 <div className="flex items-center text-sm text-gray-300">
                   <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
-                  <span>{ordem.endereco}</span>
+                  <span>
+                    {ordem?.pedidos?.endereco} - {ordem?.pedidos?.cidade}
+                    {ordem?.pedidos?.cep ? ` - CEP: ${ordem.pedidos.cep}` : ''}
+                  </span>
                 </div>
-
                 {/* Linha 5: Cidade + Estado */}
                 <div className="flex flex-wrap items-center gap-4 text-sm text-gray-300">
                   <div className="flex items-center">
@@ -278,27 +350,26 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                     {ordem.estado}
                   </div>
                 </div>
-
                 {/* Linha 6: Técnico */}
                 <div className="flex items-center text-sm text-gray-300">
                   <User className="w-4 h-4 mr-2 flex-shrink-0" />
                   {ordem.tecnico?.nome ?? '—'}
                 </div>
-
                 {/* Linha 7: Data Agendada */}
                 <div className="flex items-center text-sm text-gray-300">
                   <Calendar className="w-4 h-4 mr-2 flex-shrink-0" />
                   {formatDate(ordem.data_agendada)}
                 </div>
-
                 {/* Linha 8: Hora */}
                 <div className="flex items-center text-sm text-gray-300">
                   <Clock className="w-4 h-4 mr-2 flex-shrink-0" />
                   {formatTime(ordem.data_agendada)}
                 </div>
               </div>
+
               <div className="h-4" />
-              <div className="flex  items-center justify-start gap-2 ml-4">
+
+              <div className="flex items-center justify-start gap-2 ml-4">
                 <Button
                   onClick={() => onViewOS(ordem)}
                   variant="outline"
@@ -311,45 +382,45 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
 
                 {(ordem.status === 'concluido' || ordem.status === 'encerrado') && (
                   <>
-                  {ordem.status === 'concluido' && (
-                    <>
-                    <Button
-                      onClick={() => handleOpenSignatureModal(ordem, 'tecnico')}
-                      variant="outline"
-                      size="sm"
-                      className={
-                        `w-full sm:w-auto border-white/20 text-white hover:bg-white/10 ` +
-                        (getSignatureStatus(ordem).hasTecnico ? ` bg-green-500/20 text-green-300 hover:bg-green-500/30 ` : ``)
-                      }
-                      title={
-                        getSignatureStatus(ordem).hasTecnico
-                          ? '✓ Assinado pelo Técnico'
-                          : 'Assinatura do Técnico'
-                      }
-                    >
-                      <PenTool className="w-4 h-4 mr-2" />
-                      {getSignatureStatus(ordem).hasTecnico ? '✓ Tec' : 'Tec'}
-                    </Button>
-
-                    <Button
-                      onClick={() => handleOpenSignatureModal(ordem, 'cliente')}
-                      variant="outline"
-                      size="sm"
-                      className={
-                        `w-full sm:w-auto border-white/20 text-white hover:bg-white/10 ` +
-                        (getSignatureStatus(ordem).hasCliente ? ` bg-green-500/20 text-green-300 hover:bg-green-500/30 ` : ``)
-                      }
-                      title={
-                        getSignatureStatus(ordem).hasCliente
-                          ? '✓ Assinado pelo Cliente'
-                          : 'Assinatura do Cliente'
-                      }
-                    >
-                      <PenTool className="w-4 h-4 mr-2" />
-                      {getSignatureStatus(ordem).hasCliente ? '✓ Cli' : 'Cli'}
-                    </Button>
-                    </>
+                    {ordem.status === 'concluido' && (
+                      <>
+                        <Button
+                          onClick={() => handleOpenSignatureModal(ordem, 'tecnico')}
+                          variant="outline"
+                          size="sm"
+                          className={
+                            `w-full sm:w-auto border-white/20 text-white hover:bg-white/10 ` +
+                            (getSignatureStatus(ordem).hasTecnico ? ` bg-green-500/20 text-green-300 hover:bg-green-500/30 ` : ``)
+                          }
+                          title={
+                            getSignatureStatus(ordem).hasTecnico
+                              ? '✓ Assinado pelo Técnico'
+                              : 'Assinatura do Técnico'
+                          }
+                        >
+                          <PenTool className="w-4 h-4 mr-2" />
+                          {getSignatureStatus(ordem).hasTecnico ? '✓ Tec' : 'Tec'}
+                        </Button>
+                        <Button
+                          onClick={() => handleOpenSignatureModal(ordem, 'cliente')}
+                          variant="outline"
+                          size="sm"
+                          className={
+                            `w-full sm:w-auto border-white/20 text-white hover:bg-white/10 ` +
+                            (getSignatureStatus(ordem).hasCliente ? ` bg-green-500/20 text-green-300 hover:bg-green-500/30 ` : ``)
+                          }
+                          title={
+                            getSignatureStatus(ordem).hasCliente
+                              ? '✓ Assinado pelo Cliente'
+                              : 'Assinatura do Cliente'
+                          }
+                        >
+                          <PenTool className="w-4 h-4 mr-2" />
+                          {getSignatureStatus(ordem).hasCliente ? '✓ Cli' : 'Cli'}
+                        </Button>
+                      </>
                     )}
+
                     <Button
                       onClick={() => handleDownloadReport(ordem)}
                       variant="outline"
@@ -365,30 +436,30 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                 )}
 
                 {(ordem.status === 'em_progresso' || ordem.status === 'pendente') && (
-  <>
-    <Button
-      onClick={() => onStartInspection(ordem)}
-      size="sm"
-      title={ordem.status === 'pendente' ? 'Executar Inspeção' : 'Continuar Inspeção'}
-      className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 w-full sm:w-auto"
-    >
-      <Play className="w-4 h-4 mr-2" />
-      {ordem.status === 'pendente' ? 'Iniciar' : 'Continuar'}
-    </Button>
+                  <>
+                    <Button
+                      onClick={() => onStartInspection(ordem)}
+                      size="sm"
+                      title={ordem.status === 'pendente' ? 'Executar Inspeção' : 'Continuar Inspeção'}
+                      className="bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 w-full sm:w-auto"
+                    >
+                      <Play className="w-4 h-4 mr-2" />
+                      {ordem.status === 'pendente' ? 'Iniciar' : 'Continuar'}
+                    </Button>
 
-    <Button
-      onClick={() => handleDownloadReport(ordem)}
-      variant="outline"
-      size="sm"
-      title="Baixar contrato em PDF"
-      className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
-      disabled={saving}
-    >
-      <Download className="w-4 h-4 mr-2" />
-      PDF Contrato
-    </Button>
-  </>
-)}
+                    <Button
+                      onClick={() => handleDownloadContract(ordem)}
+                      variant="outline"
+                      size="sm"
+                      title="Baixar contrato em PDF"
+                      className="border-white/20 text-white hover:bg-white/10 w-full sm:w-auto"
+                      disabled={saving}
+                    >
+                      <Download className="w-4 h-4 mr-2" />
+                      PDF Contrato
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </motion.div>
