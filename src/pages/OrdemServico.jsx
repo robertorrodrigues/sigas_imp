@@ -35,7 +35,7 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes }) => {
     cliente_id: '',
     endereco: '',
     cidade: '',
-    estado: 'SP',
+    estado: '',
     cep: '',
     tipo_inspecao: 'residencial',
     status: 'pendente',
