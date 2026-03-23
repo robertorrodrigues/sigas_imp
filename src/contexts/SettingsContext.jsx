@@ -4,8 +4,8 @@ const SettingsContext = createContext();
 
 const initialSettings = {
   general: {
-    companyName: 'SIGas - Inspeções',
-    cnpj: '00.000.000/0001-00',
+    companyName: 'SIGas - Inspeção de Gás',
+    cnpj: '99.900.900/0001-09',
     address: 'Rua das Válvulas, 123, Centro',
   },
   users: [
