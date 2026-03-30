@@ -36,9 +36,10 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
             cep,
             data_agendada,
             data_conclusao,
+            valor,
             norma:norma_id(nome),
             tecnico:tecnico_id(nome),
-            pedidos:cliente_id(
+            pedidos:pedido_id(
               cliente_nome,
               endereco,
               cidade,
@@ -47,7 +48,8 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
               cliente_naturgy,
               cpf_cnpj,
               valor_servico,
-              telefone
+              telefone,
+              numero
             )
           `);
         if (error) throw error;
@@ -75,6 +77,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
   const filteredOrdens = ordens.filter((ordem) => {
     const term = (searchTerm ?? '').toLowerCase();
     const clienteNome = ordem?.pedidos?.cliente_nome?.toLowerCase() ?? '';
+    const pedidoNumero = ordem?.pedidos?.numero?.toLowerCase() ?? '';
     const idStr = String(ordem?.id ?? '').toLowerCase();
     const tecnicoNome = ordem?.tecnico?.nome?.toLowerCase() ?? '';
     const numeroStr = String(ordem?.numero ?? '').toLowerCase();
@@ -104,6 +107,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
       const header = {
         numeroOS: ordem?.numero ?? ordem?.id ?? '—',
         nomeCliente: ordem?.pedidos?.cliente_nome ?? '—',
+        numeroPedido: ordem?.pedidos?.numero ?? '—',
         nomeTecnico: ordem?.tecnico?.nome ?? '—',
         dataConclusao: ordem?.data_conclusao ?? null,
       };
@@ -155,6 +159,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
         numeroOS: ordem?.numero ?? ordem?.id ?? '—',
         dataContrato: ordem?.pedidos?.data_criacao ?? ordem?.data_agendada ?? ordem?.data_conclusao ?? null,
         nomeCliente: ordem?.pedidos?.cliente_nome ?? '—',
+        numeroPedido: ordem?.pedidos?.numero ?? '—',
         cpfCnpj: ordem?.pedidos?.cpf_cnpj ?? '—',
         numeroCliente: ordem?.pedidos?.cliente_naturgy ?? '—',
         enderecoCompleto: [
@@ -167,7 +172,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
         instrucaoNormativa: ordem?.norma?.nome ?? 'IN 48/2015',
         servico: 'Inspeção Periódica de Gás',
         tipoImovel: 'Residencial',
-        valorTotal: ordem?.pedidos?.valor_servico ?? 0,
+        valorTotal: ordem?.valor ?? 0,
         dadosContratada: {
           razaoSocial: empresa?.nome ?? '',
           cnpj: empresa?.cnpj ?? '',
@@ -314,6 +319,10 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                 <div className="flex items-center space-x-3">
                   <span className="text-blue-400 font-medium">{ordem.numero}</span>
                 </div>
+                 {/* Linha 3: Numero Pedido */}
+                <span className="text-blue-400 font-medium">
+                  Pedido - {ordem.pedidos?.numero ?? '—'}
+                </span>
                 {/* Linha 2: Status + Norma */}
                 <div className="flex flex-wrap items-center gap-2">
                   <span

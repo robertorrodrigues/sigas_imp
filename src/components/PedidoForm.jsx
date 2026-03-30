@@ -12,6 +12,7 @@ const PedidoForm = ({ pedido, onClose, onSubmit }) => {
     tipo: 'residencial',
     endereco: '',
     cidade: '',
+    estado: '',
     cep: '',
     contato: '',
     email: '',
@@ -101,8 +102,8 @@ const PedidoForm = ({ pedido, onClose, onSubmit }) => {
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
+          <div className="flex gap-4">
+            <div className="flex-1">
               <label className="block text-white text-sm font-medium mb-2">
                 Cidade
               </label>
@@ -116,7 +117,27 @@ const PedidoForm = ({ pedido, onClose, onSubmit }) => {
               />
             </div>
 
-            <div>
+            <div className="w-24">
+            <label className="block text-white text-sm font-medium mb-2">
+              Estado
+            </label>
+            <input
+              type="text"
+              required
+              maxLength={4}
+              value={formData.estado}
+              onChange={(e) =>
+                setFormData({
+                  ...formData,estado: e.target.value.toUpperCase().slice(0, 4)
+                })
+              }
+              className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              placeholder="Estado"
+            />
+          </div>
+
+
+            <div className="w-40"> 
               <label className="block text-white text-sm font-medium mb-2">
                 CEP
               </label>

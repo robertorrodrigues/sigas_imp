@@ -269,6 +269,16 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
         if (updateError) throw updateError;
       }
 
+      // Status para o pedido também se OS for salva como em progresso
+      //if (novoStatus === 'em_progresso') {
+      //  const { error: pedidoError } = await supabase
+      //    .from('pedidos')
+      //    .update({ status: 'em_andamento' })
+      //    .eq('id', os.cliente_id); // ou eq('id', os.pedido_id) dependendo do modelo de dados
+
+      //  if (pedidoError) throw pedidoError;
+      //}
+
       toast({
         title: 'Rascunho salvo!',
         description: `Salvamos ${draftEntries.length} item(ns). Total na OS: ${count ?? 0}. ${novoStatus ? `Status: ${novoStatus}.` : ''}`
@@ -343,6 +353,13 @@ if (flagStatusConcluido) { novoStatus = 'concluido'; }
        });
 
      if (validacaoError) throw validacaoError;
+
+     const { error: pedidoError } = await supabase
+       .from('pedidos')
+       .update(updatePayload.status === 'concluido' ? { status: 'concluido' } : { status: 'em_andamento' })
+       .eq('id', os.pedido_id);
+
+     if (pedidoError) throw pedidoError;
    }
  }
 

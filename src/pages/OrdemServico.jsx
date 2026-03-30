@@ -29,7 +29,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-const OSForm = ({ os, onSave, onCancel, tecnicos, clientes }) => {
+const OSForm = ({ os, onSave, onCancel, tecnicos, clientes, pedidos }) => {
   const [formData, setFormData] = useState(os || {
     numero: '',
     cliente_id: '',
@@ -37,20 +37,63 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes }) => {
     cidade: '',
     estado: '',
     cep: '',
-    tipo_inspecao: 'residencial',
+    tipo_inspecao: '',
     status: 'pendente',
     data_agendada: '',
     tecnico_id: '',
     descricao: '',
     observacoes: '',
+    pedido_id: '',
   });
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+
+  // Se selecionar pedido → sincroniza com cliente
+    if (name === "pedido_id") {
+      syncPedidoCliente(value);
+      return;
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
   };
 
-  
+  const syncPedidoCliente = (value) => {
+    setFormData(prev => ({
+      ...prev,
+      pedido_id: value,
+      cliente_id: value
+    }));
+  };
+
+  const handleClienteChange = (e) => {
+  const id = e.target.value;
+
+  const cliente = clientes.find(c => c.id == id);
+
+    if (!cliente) return;
+
+    // sincroniza cliente_id e pedido_id
+    setFormData(prev => ({
+      ...prev,
+      cliente_id: id,
+      pedido_id: id,
+
+      // preenche os campos automáticos
+      cliente_nome: cliente.cliente_nome,
+      tipo: cliente.tipo,
+      endereco: cliente.endereco,
+      cidade: cliente.cidade,
+      cep: cliente.cep,
+      email: cliente.email,
+      telefone: cliente.telefone,
+    }));
+  };
+
+
   const handleSubmit = (e) => {
     e.preventDefault();
     if (!formData.numero || !formData.endereco || !formData.cidade || !formData.data_agendada) {
@@ -73,9 +116,21 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes }) => {
       />
       
       <select
+        name="pedido_id"
+        value={formData.pedido_id}
+        onChange={handleChange}
+        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+      >
+        <option value="">Selecione um pedido</option>
+        {pedidos.map(p => (
+          <option key={p.id} value={p.id}>{p.numero}</option>
+        ))}
+      </select>
+
+      <select
         name="cliente_id"
         value={formData.cliente_id}
-        onChange={handleChange}
+        onChange={handleClienteChange}
         className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
       >
         <option value="">Selecione um cliente</option>
@@ -122,27 +177,38 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes }) => {
           className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
       </div>
-
-      <select
-        name="tipo_inspecao"
-        value={formData.tipo_inspecao}
-        onChange={handleChange}
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-      >
-        <option value="residencial">Residencial</option>
-        <option value="comercial">Comercial</option>
-        <option value="industrial">Industrial</option>
+      
+      <div className="grid grid-cols-3 gap-4">
+        <select
+          name="tipo_inspecao"
+          value={formData.tipo_inspecao}
+          onChange={handleChange}
+          className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="" selected>Selecione o tipo</option>
+          <option value="residencial">Residencial</option>
+          <option value="comercial">Comercial</option>
+          <option value="industrial">Industrial</option>
       </select>
-
-      <input
-        type="datetime-local"
+        <input
+          type="text"
+          name="valor"
+          value={formData.valor}
+          onChange={handleChange}
+          placeholder="Valor"
+          className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
+        <input
+        type="text"
         name="data_agendada"
         value={formData.data_agendada}
         onChange={handleChange}
+        placeholder="Data Agendada"
         required
         className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
       />
-
+      </div>
+        
       <select
         name="tecnico_id"
         value={formData.tecnico_id}
@@ -202,6 +268,7 @@ const OrdemServico = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingOS, setEditingOS] = useState(null);
   const [tecnicos, setTecnicos] = useState([]);
+  const [pedidos, setPedidos] = useState([]);
   const [clientes, setClientes] = useState([]);
   const { user } = useAuth();
   const { toast } = useToast();
@@ -251,7 +318,7 @@ const OrdemServico = () => {
   const fetchClientes = async () => {
     const { data, error } = await supabase
       .from('pedidos')
-      .select('id, cliente_nome')
+      .select('id,cliente_nome,tipo,endereco,cidade,cep,email,telefone')
       .in('status', ['pendente', 'agendado', 'em_andamento']);
 
     if (!error) {
@@ -259,10 +326,22 @@ const OrdemServico = () => {
     }
   };
 
+   const fetchPedidos = async () => {
+    const { data, error } = await supabase
+      .from('pedidos')
+      .select('id, numero')
+      .in('status', ['pendente', 'agendado', 'em_andamento']);
+
+    if (!error) {
+      setPedidos(data || []);
+    }
+  };
+
   useEffect(() => {
     fetchOS();
     fetchTecnicos();
     fetchClientes();
+    fetchPedidos();
   }, [filterStatus]);
 
   const handleSaveOS = async (os) => {
@@ -284,6 +363,8 @@ const OrdemServico = () => {
             tecnico_id: os.tecnico_id,
             descricao: os.descricao,
             observacoes: os.observacoes,
+            pedido_id: os.pedido_id,
+
           })
           .eq('id', os.id);
 
@@ -313,6 +394,8 @@ const OrdemServico = () => {
             descricao: os.descricao,
             observacoes: os.observacoes,
             created_by: user?.id,
+            pedido_id: os.pedido_id,
+            valor: os.valor,
           }]);
 
         if (error) {
@@ -375,7 +458,7 @@ const OrdemServico = () => {
             <DialogHeader>
               <DialogTitle>{editingOS ? 'Editar OS' : 'Nova Ordem de Serviço'}</DialogTitle>
             </DialogHeader>
-            <OSForm os={editingOS} onSave={handleSaveOS} tecnicos={tecnicos} clientes={clientes} />
+            <OSForm os={editingOS} onSave={handleSaveOS} tecnicos={tecnicos} clientes={clientes} pedidos={pedidos} />
           </DialogContent>
         </Dialog>
       </motion.div>

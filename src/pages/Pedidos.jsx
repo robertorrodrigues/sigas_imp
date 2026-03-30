@@ -256,8 +256,8 @@ const Pedidos = () => {
                   <td className="px-6 py-4 text-white font-medium">{pedido.numero}</td>
                   <td className="px-6 py-4 text-gray-300">{pedido.cliente_nome}</td>
                   <td className="px-6 py-4 text-gray-300 capitalize">{pedido.tipo}</td>
-                  <td className="px-6 py-4 text-gray-300 text-sm">{pedido.endereco}</td>
-                  <td className="px-6 py-4">
+                  <td className="px-6 py-4 text-gray-300 text-sm">{pedido.endereco} - {pedido.cidade} / {pedido.estado}</td>
+                  <td className="px-6 py-4 w-60">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       pedido.status === 'concluido' ? 'bg-green-500/20 text-green-300' :
                       pedido.status === 'em_andamento' ? 'bg-orange-500/20 text-orange-300' :
@@ -289,6 +289,7 @@ const Pedidos = () => {
                             tipo: pedido.tipo,
                             endereco: pedido.endereco,
                             cidade: pedido.cidade,
+                            estado: pedido.estado,
                             cep: pedido.cep,
                             contato: pedido.contato,
                             email: pedido.email,
