@@ -70,6 +70,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
       concluido: 'bg-green-500/20 text-green-300',
       cancelada: 'bg-orange-500/20 text-orange-300',
       encerrado: 'bg-red-500/20 text-green-300',
+      nao_conforme: 'bg-red-500/20 text-red-300',
     };
     return colors[status] ?? 'bg-gray-500/20 text-gray-300';
   };
@@ -389,7 +390,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                   <Eye className="w-4 h-4" />
                 </Button>
 
-                {(ordem.status === 'concluido' || ordem.status === 'encerrado') && (
+                {(ordem.status === 'concluido' || ordem.status === 'encerrado' || ordem.status === 'nao_conforme') && (
                   <>
                     {ordem.status === 'concluido' && (
                       <>

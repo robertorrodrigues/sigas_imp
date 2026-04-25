@@ -1,117 +1,95 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Calendar, MapPin, Clock, User } from 'lucide-react';
+import { Calendar, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AgendaCalendar from '@/components/AgendaCalendar';
 import TechnicianSchedule from '@/components/TechnicianSchedule';
-import inspections from '@/lib/inspectionsData';
+import { supabase } from '@/lib/customSupabaseClient';
+
+const getLocalDate = (date) => {
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+};
 
 const Agenda = () => {
   const [viewMode, setViewMode] = useState('calendar');
-  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [osList, setOsList] = useState([]);
+
+  useEffect(() => {
+    fetchOS();
+  }, []);
+
+  const fetchOS = async () => {
+    const { data, error } = await supabase
+      .from('ordem_servico')
+      .select(`
+        id,
+        numero,
+        cidade,
+        endereco,
+        status,
+        data_agendada,
+        tecnico:tecnico_id ( nome ),
+        pedidos:pedido_id ( cliente_nome )
+      `)
+      .order('data_agendada');
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    const normalized = data.map(os => ({
+      id: os.id,
+      numero: os.numero,
+      cidade: os.cidade,
+      endereco: os.endereco,
+      status: os.status,
+      tecnico: os.tecnico?.nome || 'Sem técnico',
+      cliente: os.pedidos?.cliente_nome || 'Cliente desconhecido',
+      data: getLocalDate(os.data_agendada),
+    }));
+
+    setOsList(normalized);
+
+    // ✅ MOVE O CALENDÁRIO PARA A PRIMEIRA DATA COM OS
+    if (normalized.length > 0) {
+      setSelectedDate(new Date(normalized[0].data));
+    }
+  };
+
+  if (!selectedDate) return null; // aguarda carga correta
 
   return (
     <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4"
-      >
-        <div>
-          <h1 className="text-3xl font-bold text-white">Agenda de Inspeções</h1>
-          <p className="text-gray-300 mt-1">Gerencie agendamentos e roteirização</p>
-        </div>
-        <div className="flex items-center space-x-2 bg-white/10 p-1 rounded-xl border border-white/20">
-          <Button
-            onClick={() => setViewMode('calendar')}
-            variant={viewMode === 'calendar' ? 'default' : 'ghost'}
-            className={`w-full sm:w-auto ${viewMode === 'calendar' 
-              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
-              : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            <Calendar className="w-4 h-4 mr-2" />
-            Calendário
-          </Button>
-          <Button
-            onClick={() => setViewMode('technician')}
-            variant={viewMode === 'technician' ? 'default' : 'ghost'}
-            className={`w-full sm:w-auto ${viewMode === 'technician' 
-              ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white' 
-              : 'text-gray-300 hover:bg-white/10 hover:text-white'
-            }`}
-          >
-            <User className="w-4 h-4 mr-2" />
-            Por Técnico
-          </Button>
-        </div>
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+        <h1 className="text-3xl font-bold text-white">Agenda de Inspeções</h1>
       </motion.div>
 
-      {/* Stats Cards */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.1 }}
-        className="grid grid-cols-2 md:grid-cols-4 gap-4 sm:gap-6"
-      >
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-white/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-300 text-xs sm:text-sm">Hoje</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">8</p>
-            </div>
-            <Calendar className="w-6 h-6 sm:w-8 sm:h-8 text-blue-400" />
-          </div>
-        </div>
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-white/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-300 text-xs sm:text-sm">Semana</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">32</p>
-            </div>
-            <Clock className="w-6 h-6 sm:w-8 sm:h-8 text-green-400" />
-          </div>
-        </div>
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-white/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-300 text-xs sm:text-sm">Técnicos</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">5</p>
-            </div>
-            <User className="w-6 h-6 sm:w-8 sm:h-8 text-purple-400" />
-          </div>
-        </div>
-        <div className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-white/20">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-gray-300 text-xs sm:text-sm">Regiões</p>
-              <p className="text-xl sm:text-2xl font-bold text-white">12</p>
-            </div>
-            <MapPin className="w-6 h-6 sm:w-8 sm:h-8 text-orange-400" />
-          </div>
-        </div>
-      </motion.div>
+      <div className="flex space-x-2">
+        <Button onClick={() => setViewMode('calendar')}>
+          <Calendar className="w-4 h-4 mr-2" />
+          Calendário
+        </Button>
+        <Button onClick={() => setViewMode('technician')}>
+          <User className="w-4 h-4 mr-2" />
+          Por Técnico
+        </Button>
+      </div>
 
-      {/* Main Content */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.2 }}
-      >
-        {viewMode === 'calendar' ? (
-          <AgendaCalendar 
-            selectedDate={selectedDate}
-            onDateChange={setSelectedDate}
-            inspections={inspections}
-          />
-        ) : (
-          <TechnicianSchedule
-            inspections={inspections}
-            selectedDate={selectedDate}
-            onDateSelect={setSelectedDate}
-          />
-        )}
-      </motion.div>
+      {viewMode === 'calendar' ? (
+        <AgendaCalendar
+          osList={osList}
+          selectedDate={selectedDate}
+          onDateChange={setSelectedDate}
+        />
+      ) : (
+        <TechnicianSchedule
+          osList={osList}
+          selectedDate={selectedDate}
+        />
+      )}
     </div>
   );
 };

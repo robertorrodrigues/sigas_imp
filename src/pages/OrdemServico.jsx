@@ -232,6 +232,7 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes, pedidos }) => {
         <option value="concluida">Concluída</option>
         <option value="cancelada">Cancelada</option>
         <option value="encerrado">Encerrado</option>
+        <option value="nao_conforme">Não Conforme</option>
       </select>
 
       <textarea
@@ -377,35 +378,103 @@ const OrdemServico = () => {
           await fetchOS();
         }
       } else {
-        // inserir
-        const { error } = await supabase
-          .from('ordem_servico')
-          .insert([{
-            numero: os.numero,
-            cliente_id: os.cliente_id,
-            endereco: os.endereco,
-            cidade: os.cidade,
-            estado: os.estado,
-            cep: os.cep,
-            tipo_inspecao: os.tipo_inspecao,
-            status: os.status,
-            data_agendada: os.data_agendada,
-            tecnico_id: os.tecnico_id,
-            descricao: os.descricao,
-            observacoes: os.observacoes,
-            created_by: user?.id,
-            pedido_id: os.pedido_id,
-            valor: os.valor,
-          }]);
+  // ✅ 1. Verifica se existe OS não conforme para o mesmo pedido
+  const { data: osNaoConforme, error: ncError } = await supabase
+    .from('ordem_servico')
+    .select('id, status')
+    .eq('pedido_id', os.pedido_id)
+    .eq('status', 'nao_conforme')
+    .limit(1)
+    .maybeSingle();
 
-        if (error) {
-          toast({ title: 'Erro ao criar OS', description: error.message, variant: 'destructive' });
-        } else {
-          toast({ title: 'OS criada com sucesso' });
-          setIsDialogOpen(false);
-          await fetchOS();
-        }
+  if (ncError) {
+    toast({
+      title: 'Erro ao validar OS não conforme',
+      description: ncError.message,
+      variant: 'destructive',
+    });
+    return;
+  }
+
+  // ✅ 2. Define status inicial da nova OS
+  const statusNovaOS = osNaoConforme ? 'em_progresso' : os.status;
+
+  // ✅ 3. Cria nova OS
+  const { data: novaOS, error: insertError } = await supabase
+    .from('ordem_servico')
+    .insert([{
+      numero: os.numero,
+      cliente_id: os.cliente_id,
+      endereco: os.endereco,
+      cidade: os.cidade,
+      estado: os.estado,
+      cep: os.cep,
+      tipo_inspecao: os.tipo_inspecao,
+      status: statusNovaOS,
+      data_agendada: os.data_agendada,
+      tecnico_id: os.tecnico_id,
+      descricao: os.descricao,
+      observacoes: os.observacoes,
+      created_by: user?.id,
+      pedido_id: os.pedido_id,
+      valor: os.valor,
+    }])
+    .select()
+    .single();
+
+  if (insertError) {
+    toast({
+      title: 'Erro ao criar OS',
+      description: insertError.message,
+      variant: 'destructive',
+    });
+    return;
+  }
+
+  // ✅ 4. SE havia OS não conforme, clona o checklist
+  if (osNaoConforme) {
+    const { data: checklistAntigo, error: checklistError } = await supabase
+      .from('checklist')
+      .select('*')
+      .eq('ordem_servico_id', osNaoConforme.id);
+
+    if (checklistError) {
+      toast({
+        title: 'Erro ao buscar checklist anterior',
+        description: checklistError.message,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (checklistAntigo?.length) {
+      const novoChecklist = checklistAntigo.map(item => ({
+        ordem_servico_id: novaOS.id,
+        item: item.item,
+        resposta: item.resposta,
+        observacao: item.observacao,
+        status: 'pendente', // ✅ ou mantém como estava, se quiser
+      }));
+
+      const { error: insertChecklistError } = await supabase
+        .from('checklist')
+        .insert(novoChecklist);
+
+      if (insertChecklistError) {
+        toast({
+          title: 'Erro ao copiar checklist',
+          description: insertChecklistError.message,
+          variant: 'destructive',
+        });
+        return;
       }
+    }
+  }
+
+  toast({ title: 'OS criada com sucesso' });
+  setIsDialogOpen(false);
+  await fetchOS();
+}
     } catch (err) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
     }
@@ -494,6 +563,7 @@ const OrdemServico = () => {
             <option value="concluido">Concluída</option>
             <option value="cancelada">Cancelada</option>
             <option value="encerrado">Encerrado</option>
+            <option value="nao_conforme">Não Conforme</option>
           </select>
         </div>
       </motion.div>

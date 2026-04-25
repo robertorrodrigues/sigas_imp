@@ -299,6 +299,7 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
     );
     const missingItems = requiredItems.filter((item) => !checklistData[item.id]);
     let flagStatusConcluido = false;
+    let flagNaoConforme = false;
 
     if (missingItems.length > 0) {
       toast({
@@ -316,6 +317,12 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
 
   // ... monta checklistEntries ...
 
+  // ✅ Verifica se existe alguma resposta "Não Conforme"
+    flagNaoConforme = checklistEntries.some((entry) =>
+      entry.resultado?.toLowerCase() === 'não conforme' ||
+      entry.resultado?.toLowerCase() === 'nao conforme'
+    );
+
   const { error: upsertError } = await supabase
     .from('checklist')
     .upsert(checklistEntries, { onConflict: 'os_id,item_id' });
@@ -324,12 +331,16 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
 
   const count = checklistEntries.length;    
 
-let novoStatus = 'em_progresso';
+  let novoStatus = 'em_progresso';
 
-if (flagStatusConcluido) { novoStatus = 'concluido'; }
+  if (flagNaoConforme) {
+      novoStatus = 'nao_conforme';
+    } else if (flagStatusConcluido) {
+      novoStatus = 'concluido';
+    }
 
   
- if (novoStatus) {
+  if (novoStatus) {
    const updatePayload = { status: novoStatus };
 
    if (novoStatus === 'concluido') {
@@ -361,6 +372,23 @@ if (flagStatusConcluido) { novoStatus = 'concluido'; }
 
      if (pedidoError) throw pedidoError;
    }
+
+   // ✅ Se for "não conforme" → pedido fica em andamento
+      if (novoStatus === 'nao_conforme') {
+        /* const { error: pedidoError } = await supabase
+          .from('pedidos')
+          .update({ status: 'em_andamento' })
+          .eq('id', os.pedido_id); */
+
+        const { error: pedidoError } = await supabase
+          .from('pedidos')
+          .update(updatePayload.status === 'concluido' ? { status: 'concluido' } : { status: 'em_andamento' })
+          .eq('id', os.pedido_id);
+
+        if (pedidoError) throw pedidoError;
+      }
+
+
  }
 
   // Toast de sucesso
@@ -375,14 +403,14 @@ if (flagStatusConcluido) { novoStatus = 'concluido'; }
     photos,
     timestamp: new Date().toISOString()
   });
-} catch (error) {
-  console.error('Error saving checklist:', error);
-  toast({
-    title: 'Erro ao salvar',
-    description: error?.message ?? 'Não foi possível salvar.',
-    variant: 'destructive'
-  });
-}
+    } catch (error) {
+      console.error('Error saving checklist:', error);
+      toast({
+        title: 'Erro ao salvar',
+        description: error?.message ?? 'Não foi possível salvar.',
+        variant: 'destructive'
+      });
+    }
   };
 
   const currentCategory = checklistItems[currentStep];
