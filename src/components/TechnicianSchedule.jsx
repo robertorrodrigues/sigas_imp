@@ -18,9 +18,13 @@ const TechnicianSchedule = ({ osList = [], selectedDate }) => {
 
   // ✅ Agrupa por técnico
   const porTecnico = osDoDia.reduce((acc, os) => {
-    const tecnico = os.tecnico || 'Sem técnico';
-    acc[tecnico] = acc[tecnico] || [];
-    acc[tecnico].push(os);
+    const nomeTecnico = os.tecnico?.nome || 'Sem técnico';
+
+    if (!acc[nomeTecnico]) {
+      acc[nomeTecnico] = [];
+    }
+
+    acc[nomeTecnico].push(os);
     return acc;
   }, {});
 

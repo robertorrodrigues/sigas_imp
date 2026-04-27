@@ -8,12 +8,14 @@ import { supabase } from '@/lib/customSupabaseClient';
 
 const getLocalDate = (date) => {
   const d = new Date(date);
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate()
+  ).padStart(2, '0')}`;
 };
 
 const Agenda = () => {
   const [viewMode, setViewMode] = useState('calendar');
-  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(new Date());
   const [osList, setOsList] = useState([]);
 
   useEffect(() => {
@@ -30,7 +32,8 @@ const Agenda = () => {
         endereco,
         status,
         data_agendada,
-        tecnico:tecnico_id ( nome ),
+        tecnico_id,
+        tecnico:tecnico_id ( id, nome ),
         pedidos:pedido_id ( cliente_nome )
       `)
       .order('data_agendada');
@@ -46,33 +49,46 @@ const Agenda = () => {
       cidade: os.cidade,
       endereco: os.endereco,
       status: os.status,
-      tecnico: os.tecnico?.nome || 'Sem técnico',
-      cliente: os.pedidos?.cliente_nome || 'Cliente desconhecido',
       data: getLocalDate(os.data_agendada),
+
+      // ✅ IMPORTANTE: manter estrutura compatível
+      tecnico_id: os.tecnico_id,
+      tecnico: os.tecnico || null,
+
+      cliente: os.pedidos?.cliente_nome || 'Cliente desconhecido'
     }));
 
     setOsList(normalized);
 
-    // ✅ MOVE O CALENDÁRIO PARA A PRIMEIRA DATA COM OS
-    if (normalized.length > 0) {
-      setSelectedDate(new Date(normalized[0].data));
-    }
+    // Move o calendário para a primeira data disponível
+    //if (normalized.length > 0) {
+    //  setSelectedDate(new Date(normalized[0].data));
+    //}
   };
 
-  if (!selectedDate) return null; // aguarda carga correta
+  if (!selectedDate) return null;
 
   return (
     <div className="space-y-6">
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-        <h1 className="text-3xl font-bold text-white">Agenda de Inspeções</h1>
+        <h1 className="text-3xl font-bold text-white">
+          Agenda de Inspeções
+        </h1>
       </motion.div>
 
       <div className="flex space-x-2">
-        <Button onClick={() => setViewMode('calendar')}>
+        <Button
+          variant={viewMode === 'calendar' ? 'default' : 'secondary'}
+          onClick={() => setViewMode('calendar')}
+        >
           <Calendar className="w-4 h-4 mr-2" />
           Calendário
         </Button>
-        <Button onClick={() => setViewMode('technician')}>
+
+        <Button
+          variant={viewMode === 'technician' ? 'default' : 'secondary'}
+          onClick={() => setViewMode('technician')}
+        >
           <User className="w-4 h-4 mr-2" />
           Por Técnico
         </Button>
@@ -83,6 +99,7 @@ const Agenda = () => {
           osList={osList}
           selectedDate={selectedDate}
           onDateChange={setSelectedDate}
+          onOsAtualizada={fetchOS}   
         />
       ) : (
         <TechnicianSchedule
