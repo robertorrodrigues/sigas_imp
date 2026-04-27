@@ -84,7 +84,7 @@ const ValidationList = ({ searchTerm, filterStatus, onSelectValidation, onSelect
             id,
             numero,
             data_conclusao,
-            pedido:cliente_id ( id, cliente_nome ),
+            pedido:pedido_id ( id, cliente_nome ),
             tecnico:tecnico_id ( nome )
           ),
           validador_id,

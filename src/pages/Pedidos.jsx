@@ -107,6 +107,7 @@ const Pedidos = () => {
             tipo: formData.tipo,
             endereco: formData.endereco,
             cidade: formData.cidade,
+            estado: formData.estado,
             cep: formData.cep,
             contato: formData.contato,
             email: formData.email,

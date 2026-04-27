@@ -75,7 +75,7 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
         // Requer FK ordem_servico.cliente_id -> pedidos.id definida no Supabase
         const { data, error } = await supabase
           .from('ordem_servico')
-          .select('numero, pedidos(cliente_nome)')
+          .select('id, numero, pedido_id, pedidos(cliente_nome)')
           .eq('numero', os.numero)
           .single(); // esperamos uma única OS pelo número
 

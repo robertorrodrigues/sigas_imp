@@ -87,6 +87,7 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes, pedidos }) => {
       tipo: cliente.tipo,
       endereco: cliente.endereco,
       cidade: cliente.cidade,
+      estado: cliente.estado,
       cep: cliente.cep,
       email: cliente.email,
       telefone: cliente.telefone,
@@ -319,7 +320,7 @@ const OrdemServico = () => {
   const fetchClientes = async () => {
     const { data, error } = await supabase
       .from('pedidos')
-      .select('id,cliente_nome,tipo,endereco,cidade,cep,email,telefone')
+      .select('id,cliente_nome,tipo,endereco,cidade,estado,cep,email,telefone')
       .in('status', ['pendente', 'agendado', 'em_andamento']);
 
     if (!error) {
@@ -493,7 +494,8 @@ const OrdemServico = () => {
   const filteredOS = osList.filter(os =>
     os.numero?.toLowerCase().includes(searchTerm.toLowerCase()) ||
     os.endereco?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    os.cidade?.toLowerCase().includes(searchTerm.toLowerCase())
+    os.cidade?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    os.estado?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   const getStatusIcon = (status) => {

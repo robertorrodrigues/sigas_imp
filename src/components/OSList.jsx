@@ -43,6 +43,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
               cliente_nome,
               endereco,
               cidade,
+              estado,
               cep,
               data_criacao,
               cliente_naturgy,
@@ -138,14 +139,6 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
     try {
       setSaving(true);
       setLoadingChecklist(true);
-
-      // Buscar checklist (opcional) - manter para anexar ao contrato ao final
-      //const { data: checklistData, error: checklistError } = await supabase
-      //  .from('checklist')
-      //  .select('item_id, descricao, resultado, observacao, foto_url')
-      //  .eq('os_id', ordem.id)
-      //  .order('item_id', { ascending: true });
-      //if (checklistError) throw checklistError;
 
       // Buscar dados da EMPRESA (primeiro registro)
       const { data: empresaRows, error: empresaError } = await supabase
@@ -345,7 +338,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
                 <div className="flex items-center text-sm text-gray-300">
                   <MapPin className="w-4 h-4 mr-2 flex-shrink-0" />
                   <span>
-                    {ordem?.pedidos?.endereco} - {ordem?.pedidos?.cidade}
+                    {ordem?.pedidos?.endereco} 
                     {ordem?.pedidos?.cep ? ` - CEP: ${ordem.pedidos.cep}` : ''}
                   </span>
                 </div>
