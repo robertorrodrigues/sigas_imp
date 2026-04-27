@@ -60,10 +60,7 @@ const Agenda = () => {
 
     setOsList(normalized);
 
-    // Move o calendário para a primeira data disponível
-    //if (normalized.length > 0) {
-    //  setSelectedDate(new Date(normalized[0].data));
-    //}
+    
   };
 
   if (!selectedDate) return null;
