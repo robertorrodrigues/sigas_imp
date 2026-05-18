@@ -10,6 +10,7 @@ import OrdemServico from '@/pages/OrdemServico';
 import OrdemServicoNew from '@/pages/OrdemServicoNew';
 import Agenda from '@/pages/Agenda';
 import Equipamentos from '@/pages/Equipamentos';
+import EquipamentoAlocacao from '@/pages/EquipamentoAlocacao';
 import Tecnicos from '@/pages/Tecnicos';
 import Validacao from '@/pages/Validacao';
 import Relatorios from '@/pages/Relatorios';
@@ -65,6 +66,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <Layout>
               <Equipamentos />
+            </Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/equipamentos/alocacao/:id"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <EquipamentoAlocacao />
             </Layout>
           </ProtectedRoute>
         } 

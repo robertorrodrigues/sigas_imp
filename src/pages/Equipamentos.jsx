@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Plus, Search, Edit, Trash2, Package } from 'lucide-react';
+import { Plus, Search, Edit, Trash2, Package, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -23,9 +24,10 @@ const Equipamentos = () => {
   const [showForm, setShowForm] = useState(false);
   const [editingEquipamento, setEditingEquipamento] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [formData, setFormData] = useState({ patrimonio: '', nome: '', validade_anos: '' });
+  const [formData, setFormData] = useState({ patrimonio: '', nome: '', validade_anos: '', status: 'disponivel' });
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const fetchEquipamentos = async () => {
     setLoading(true);
@@ -48,7 +50,7 @@ const Equipamentos = () => {
   }, []);
 
   const resetForm = () => {
-    setFormData({ patrimonio: '', nome: '', validade_anos: '' });
+    setFormData({ patrimonio: '', nome: '', validade_anos: '', status: 'disponivel' });
     setEditingEquipamento(null);
   };
 
@@ -59,6 +61,7 @@ const Equipamentos = () => {
         patrimonio: equipamento.patrimonio || '',
         nome: equipamento.nome || '',
         validade_anos: equipamento.validade_anos ?? '',
+        status: equipamento.status || 'disponivel',
       });
     } else {
       resetForm();
@@ -78,6 +81,7 @@ const Equipamentos = () => {
       patrimonio: formData.patrimonio.trim() || null,
       nome: formData.nome.trim(),
       validade_anos: formData.validade_anos ? Number(formData.validade_anos) : null,
+      status: formData.status || 'disponivel',
     };
 
     if (editingEquipamento?.id) {
@@ -214,6 +218,18 @@ const Equipamentos = () => {
                 placeholder="Ex: 2"
               />
             </label>
+            <label className="flex flex-col text-sm text-gray-300">
+              Status
+              <select
+                value={formData.status}
+                onChange={(e) => setFormData((prev) => ({ ...prev, status: e.target.value }))}
+                className="mt-2 px-4 py-3 bg-slate-900 border border-slate-700 rounded-2xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="disponivel">Disponível</option>
+                <option value="em_uso">Em uso</option>
+                <option value="indisponivel">Indisponível</option>
+              </select>
+            </label>
             <div className="sm:col-span-3 flex flex-col sm:flex-row sm:items-center sm:justify-end gap-3">
               <Button
                 type="submit"
@@ -242,18 +258,20 @@ const Equipamentos = () => {
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Patrimônio</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Nome</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Validade (anos)</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Status</th>
+                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Alocar</th>
                 <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
               {loading && (
                 <tr>
-                  <td colSpan="4" className="px-6 py-4 text-gray-400">Carregando...</td>
+                  <td colSpan="6" className="px-6 py-4 text-gray-400">Carregando...</td>
                 </tr>
               )}
               {!loading && filteredEquipamentos.length === 0 && (
                 <tr>
-                  <td colSpan="4" className="px-6 py-4 text-gray-400">Nenhum equipamento encontrado</td>
+                  <td colSpan="6" className="px-6 py-4 text-gray-400">Nenhum equipamento encontrado</td>
                 </tr>
               )}
               {filteredEquipamentos.map((equipamento) => (
@@ -261,6 +279,27 @@ const Equipamentos = () => {
                   <td className="px-6 py-4 text-white font-medium">{equipamento.patrimonio || '—'}</td>
                   <td className="px-6 py-4 text-gray-300">{equipamento.nome}</td>
                   <td className="px-6 py-4 text-gray-300">{equipamento.validade_anos ?? '—'}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                      equipamento.status === 'disponivel' ? 'bg-green-500/20 text-green-300' :
+                      equipamento.status === 'em_uso' ? 'bg-yellow-500/20 text-yellow-300' :
+                      'bg-red-500/20 text-red-300'
+                    }`}>
+                      {equipamento.status === 'disponivel' ? 'Disponível' : equipamento.status === 'em_uso' ? 'Em uso' : 'Indisponível'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => navigate(`/equipamentos/alocacao/${equipamento.id}`)}
+                      disabled={equipamento.status === 'indisponivel'}
+                      className={`${equipamento.status === 'indisponivel' ? 'opacity-40 cursor-not-allowed' : ''}`}
+                      title={equipamento.status === 'indisponivel' ? 'Equipamento indisponível' : 'Abrir alocação'}
+                    >
+                      <ArrowRight className="w-4 h-4 text-blue-400" />
+                    </Button>
+                  </td>
                   <td className="px-6 py-4">
                     <div className="flex gap-2">
                       <Button
