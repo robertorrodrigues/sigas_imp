@@ -9,6 +9,7 @@ import Pedidos from '@/pages/Pedidos';
 import OrdemServico from '@/pages/OrdemServico';
 import OrdemServicoNew from '@/pages/OrdemServicoNew';
 import Agenda from '@/pages/Agenda';
+import Equipamentos from '@/pages/Equipamentos';
 import Tecnicos from '@/pages/Tecnicos';
 import Validacao from '@/pages/Validacao';
 import Relatorios from '@/pages/Relatorios';
@@ -54,6 +55,16 @@ const AppRoutes = () => {
           <ProtectedRoute>
             <Layout>
               <Pedidos />
+            </Layout>
+          </ProtectedRoute>
+        } 
+      />
+      <Route 
+        path="/equipamentos"
+        element={
+          <ProtectedRoute>
+            <Layout>
+              <Equipamentos />
             </Layout>
           </ProtectedRoute>
         } 

@@ -16,7 +16,8 @@ import {
   ChevronDown,
   LogOut,
   Award,
-  Flame
+  Flame,
+  Package
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -24,6 +25,7 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 const allNavigation = [
   { name: 'Dashboard', href: '/', icon: Home, roles: ['administrador', 'tecnico', 'atendente'] },
   { name: 'Pedidos', href: '/pedidos', icon: FileText, roles: ['administrador', 'atendente'] },
+  { name: 'Equipamentos', href: '/equipamentos', icon: Package, roles: ['administrador', 'atendente'] },
   { name: 'Ordem de Serviço', href: '/ordem-servico', icon: ClipboardList, roles: ['administrador', 'tecnico'] },
   { name: 'Agenda', href: '/agenda', icon: Calendar, roles: ['administrador', 'atendente'] },
   { name: 'Técnicos', href: '/tecnicos', icon: Users, roles: ['administrador'] },
