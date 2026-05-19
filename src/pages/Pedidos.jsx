@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Search, Filter, Upload, Download, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,8 +29,17 @@ const Pedidos = () => {
   const [pedidos, setPedidos] = useState([]);
   const [loading, setLoading] = useState(false);
   const [editingPedido, setEditingPedido] = useState(null);
+  const location = useLocation();
   const { user } = useAuth();
   const { toast } = useToast();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('novo') === 'true') {
+      setEditingPedido(null);
+      setShowForm(true);
+    }
+  }, [location.search]);
 
   const fetchPedidos = async () => {
     setLoading(true);

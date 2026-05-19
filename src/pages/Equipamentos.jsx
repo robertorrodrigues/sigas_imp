@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Plus, Search, Edit, Trash2, Package, ArrowRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,6 +28,14 @@ const Equipamentos = () => {
   const { toast } = useToast();
   const { user } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('novo') === 'true') {
+      handleOpenForm();
+    }
+  }, [location.search]);
 
   const fetchEquipamentos = async () => {
     setLoading(true);

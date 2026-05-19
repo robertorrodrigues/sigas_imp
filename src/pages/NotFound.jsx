@@ -28,7 +28,7 @@ const NotFound = () => {
           href="/" 
           className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200"
         >
-          Voltar ao Dashboard
+          Voltar ao Login
         </a>
       </div>
     </div>

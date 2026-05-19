@@ -2,6 +2,9 @@ import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import {
   FileText,
+  FilePlus,
+  Package,
+  UserPlus,
   Clock,
   CheckCircle,
   AlertTriangle,
@@ -35,11 +38,14 @@ const Dashboard = () => {
     1
   ).toISOString().slice(0, 10);
 
-  const lastDayOfMonth = new Date(
+  const firstDayOfNextMonth = new Date(
     new Date().getFullYear(),
     new Date().getMonth() + 1,
-    0
+    1
   ).toISOString().slice(0, 10);
+
+  const monthStart = `${firstDayOfMonth}T00:00:00`;
+  const nextMonthStart = `${firstDayOfNextMonth}T00:00:00`;
 
   useEffect(() => {
     fetchDashboardStats();
@@ -64,9 +70,9 @@ const Dashboard = () => {
       supabase
         .from('ordem_servico')
         .select('id', { count: 'exact', head: true })
-        .eq('status', 'concluido')
-        .gte('data_agendada', firstDayOfMonth)
-        .lte('data_agendada', lastDayOfMonth),
+        .in('status', ['concluido', 'concluida'])
+        .gte('data_conclusao', monthStart)
+        .lt('data_conclusao', nextMonthStart),
 
       supabase
         .from('ordem_servico')
@@ -105,17 +111,15 @@ const Dashboard = () => {
   };
 
   const quickActions = [
-    { name: 'Novo Pedido', icon: FileText, path: '/pedidos', roles: ['administrador', 'atendente'], color: 'from-blue-500 to-blue-600' },
-    { name: 'Minhas OS', icon: ClipboardList, path: '/ordem-servico', roles: ['tecnico'], color: 'from-blue-500 to-blue-600' },
-    { name: 'Agendar', icon: Calendar, path: '/agenda', roles: ['administrador', 'atendente'], color: 'from-green-500 to-green-600' },
-    { name: 'Ver Agenda', icon: Calendar, path: '/agenda', roles: ['tecnico'], color: 'from-green-500 to-green-600' },
-    { name: 'Emitir Certificado', icon: Award, path: '/certificados', roles: ['administrador', 'atendente'], color: 'from-teal-500 to-teal-600' },
-    { name: 'Técnicos', icon: Users, path: '/tecnicos', roles: ['administrador'], color: 'from-purple-500 to-purple-600' },
-    { name: 'Relatórios', icon: TrendingUp, path: '/relatorios', roles: ['administrador'], color: 'from-orange-500 to-orange-600' }
+    { name: 'Novo Pedido', icon: FilePlus, path: '/pedidos?novo=true', roles: ['administrador', 'atendente'], color: 'from-blue-500 to-blue-600' },
+    { name: 'Nova OS', icon: ClipboardList, path: '/ordem-servico?novo=true', roles: ['administrador', 'tecnico'], color: 'from-green-500 to-green-600' },
+    { name: 'Novo Equipamento', icon: Package, path: '/equipamentos?novo=true', roles: ['administrador', 'atendente'], color: 'from-cyan-500 to-cyan-600' },
+    { name: 'Novo Usuário', icon: UserPlus, path: '/configuracoes?tab=usuarios&novo=true', roles: ['administrador'], color: 'from-purple-500 to-purple-600' }
   ];
 
+  const userRole = user?.user_metadata?.role || 'atendente';
   const availableActions = quickActions.filter(action =>
-    action.roles.includes(user?.role)
+    action.roles.includes(userRole)
   );
 
   return (

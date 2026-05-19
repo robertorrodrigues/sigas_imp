@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Settings, Users, FileText, Shield, Database, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,19 @@ import { toast } from '@/components/ui/use-toast';
 import ConfigTabs from '@/components/ConfigTabs';
 
 const Configuracoes = () => {
-  const [activeTab, setActiveTab] = useState('geral');
+  const location = useLocation();
+  const [activeTab, setActiveTab] = useState(() => {
+    const params = new URLSearchParams(location.search);
+    return params.get('tab') || 'geral';
+  });
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    setActiveTab(params.get('tab') || 'geral');
+  }, [location.search]);
+
+  const params = new URLSearchParams(location.search);
+  const openUserModal = params.get('novo') === 'true';
 
   const tabs = [
     { id: 'geral', name: 'Geral', icon: Settings },
@@ -55,7 +68,7 @@ const Configuracoes = () => {
         </div>
 
         <div className="p-6">
-          <ConfigTabs activeTab={activeTab} />
+          <ConfigTabs activeTab={activeTab} openUserModal={activeTab === 'usuarios' && openUserModal} />
         </div>
       </motion.div>
     </div>

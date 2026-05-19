@@ -7,13 +7,13 @@ import SecuritySettings from '@/components/settings/SecuritySettings';
 import BackupSettings from '@/components/settings/BackupSettings';
 import NotificationsSettings from '@/components/settings/NotificationsSettings';
 
-const ConfigTabs = ({ activeTab }) => {
+const ConfigTabs = ({ activeTab, openUserModal }) => {
   const renderContent = () => {
     switch (activeTab) {
       case 'geral':
         return <GeneralSettings />;
       case 'usuarios':
-        return <UserSettings />;
+        return <UserSettings openNewUserModal={openUserModal} />;
       case 'normas':
         return <NormasSettings />;
       case 'seguranca':

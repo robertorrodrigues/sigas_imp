@@ -80,11 +80,11 @@ const RecentActivity = () => {
         numero,
         status,
         updated_at,
+        created_at,
         tecnico:tecnico_id ( nome )
       `)
       .neq('status', 'pendente')
-      .order('updated_at', { ascending: false })
-      .limit(5);
+      .limit(20);
 
     if (error) {
       console.error('Erro ao buscar atividades recentes:', error);
@@ -93,7 +93,13 @@ const RecentActivity = () => {
       return;
     }
 
-    setActivities(data || []);
+    const sortedData = (data || []).sort((a, b) => {
+      const dateA = new Date(a.updated_at || a.created_at).getTime();
+      const dateB = new Date(b.updated_at || b.created_at).getTime();
+      return dateB - dateA;
+    });
+
+    setActivities(sortedData.slice(0, 5));
     setLoading(false);
   };
 
@@ -136,7 +142,7 @@ const RecentActivity = () => {
                   {os.tecnico?.nome && ` por ${os.tecnico.nome}`}
                 </p>
                 <p className="text-gray-400 text-xs mt-1">
-                  {timeAgo(os.updated_at)}
+                  {timeAgo(os.updated_at || os.created_at)}
                 </p>
               </div>
             </motion.div>

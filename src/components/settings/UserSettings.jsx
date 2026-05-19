@@ -71,7 +71,7 @@ const UserForm = ({ user, onSave, onCancel }) => {
   );
 };
 
-const UserSettings = () => {
+const UserSettings = ({ openNewUserModal = false }) => {
   const { settings, updateSettings } = useSettings();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -115,6 +115,13 @@ const UserSettings = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (openNewUserModal) {
+      setEditingUser(null);
+      setIsDialogOpen(true);
+    }
+  }, [openNewUserModal]);
 
   const handleSaveUser = async (user) => {
   setLoading(true);

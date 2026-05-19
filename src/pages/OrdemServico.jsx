@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Search, Filter, Eye, Edit, Trash2, Plus, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -274,6 +275,7 @@ const OrdemServico = () => {
   const [clientes, setClientes] = useState([]);
   const { user } = useAuth();
   const { toast } = useToast();
+  const location = useLocation();
   const [selectedOS, setSelectedOS] = useState(null);
   const [showChecklist, setShowChecklist] = useState(false);
 
@@ -345,6 +347,14 @@ const OrdemServico = () => {
     fetchClientes();
     fetchPedidos();
   }, [filterStatus]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('novo') === 'true') {
+      setEditingOS(null);
+      setIsDialogOpen(true);
+    }
+  }, [location.search]);
 
   const handleSaveOS = async (os) => {
     try {
