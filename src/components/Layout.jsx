@@ -30,7 +30,6 @@ const allNavigation = [
   { name: 'Agenda', href: '/agenda', icon: Calendar, roles: ['administrador', 'atendente'] },
   { name: 'Técnicos', href: '/tecnicos', icon: Users, roles: ['administrador'] },
   { name: 'Validação', href: '/validacao', icon: CheckCircle, roles: ['administrador'] },
-  { name: 'Certificados', href: '/certificados', icon: Award, roles: ['administrador', 'atendente'] },
   { name: 'Relatórios', href: '/relatorios', icon: BarChart3, roles: ['administrador'] },
   { name: 'Configurações', href: '/configuracoes', icon: Settings, roles: ['administrador'] },
 ];
@@ -50,7 +49,7 @@ const Layout = ({ children }) => {
   const userRole = user?.user_metadata?.role || 'atendente';
   const userName = user?.user_metadata?.name || user?.email || 'Usuário';
 
-  const navigation = allNavigation.filter(item => item.roles.includes(userRole));
+  const navigation = allNavigation.filter((item) => item.roles.includes(userRole));
 
   const sidebarVariants = {
     open: { x: 0 },

@@ -6,6 +6,7 @@ import NormasSettings from '@/components/settings/NormasSettings';
 import SecuritySettings from '@/components/settings/SecuritySettings';
 import BackupSettings from '@/components/settings/BackupSettings';
 import NotificationsSettings from '@/components/settings/NotificationsSettings';
+import Certificados from '@/pages/Certificados';
 
 const ConfigTabs = ({ activeTab, openUserModal }) => {
   const renderContent = () => {
@@ -22,6 +23,8 @@ const ConfigTabs = ({ activeTab, openUserModal }) => {
         return <BackupSettings />;
       case 'notificacoes':
         return <NotificationsSettings />;
+      case 'certificados':
+        return <Certificados />;
       default:
         return null;
     }

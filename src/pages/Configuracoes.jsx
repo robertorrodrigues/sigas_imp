@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Settings, Users, FileText, Shield, Database, Bell } from 'lucide-react';
+import { Settings, Users, FileText, Shield, Database, Bell, Award } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import ConfigTabs from '@/components/ConfigTabs';
@@ -26,6 +26,7 @@ const Configuracoes = () => {
     { id: 'usuarios', name: 'Usuários', icon: Users },
     { id: 'normas', name: 'Normas', icon: FileText },
     { id: 'seguranca', name: 'Segurança', icon: Shield },
+    { id: 'certificados', name: 'Certificados', icon: Award },
     { id: 'backup', name: 'Backup', icon: Database },
     { id: 'notificacoes', name: 'Notificações', icon: Bell },
   ];
