@@ -139,17 +139,34 @@ export const AuthProvider = ({ children }) => {
   );
 
   const signOut = useCallback(async () => {
+    if (!session) {
+      setUser(null);
+      setSession(null);
+      return { error: null };
+    }
+
     try {
       const { error } = await supabase.auth.signOut();
+
       if (error) {
-        console.error('Supabase SignOut Error:', error);
-        toast({
-          variant: 'destructive',
-          title: 'Sign out Failed',
-          description: error.message || 'Something went wrong',
-        });
+        const isSessionMissing =
+          error.status === 403 &&
+          String(error.message).toLowerCase().includes('session_not_found');
+
+        if (!isSessionMissing) {
+          console.error('Supabase SignOut Error:', error);
+          toast({
+            variant: 'destructive',
+            title: 'Sign out Failed',
+            description: error.message || 'Something went wrong',
+          });
+          return { error };
+        }
       }
-      return { error };
+
+      setUser(null);
+      setSession(null);
+      return { error: null };
     } catch (err) {
       console.error('Unexpected signOut error:', err);
       toast({
@@ -157,9 +174,11 @@ export const AuthProvider = ({ children }) => {
         title: 'Sign out Failed',
         description: 'Erro inesperado ao sair.',
       });
+      setUser(null);
+      setSession(null);
       return { error: err };
     }
-  }, [toast]);
+  }, [session, toast]);
 
   const value = useMemo(
     () => ({
