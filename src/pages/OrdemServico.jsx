@@ -106,7 +106,7 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes, pedidos }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 max-h-96 overflow-y-auto">
+    <form onSubmit={handleSubmit} className="space-y-4 max-h-96 overflow-y-auto pr-4">
       <input
         type="text"
         name="numero"
@@ -201,14 +201,14 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes, pedidos }) => {
           className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <input
-        type="text"
-        name="data_agendada"
-        value={formData.data_agendada}
-        onChange={handleChange}
-        placeholder="Data Agendada"
-        required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
+          type="date"
+          name="data_agendada"
+          value={formData.data_agendada}
+          onChange={handleChange}
+          placeholder="Data Agendada"
+          required
+          className="w-full px-4 py-3 bg-white/10 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+        />
       </div>
         
       <select
