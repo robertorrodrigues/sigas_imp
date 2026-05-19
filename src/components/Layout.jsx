@@ -24,11 +24,11 @@ import { useAuth } from '@/contexts/SupabaseAuthContext';
 
 const allNavigation = [
   { name: 'Dashboard', href: '/', icon: Home, roles: ['administrador', 'tecnico', 'atendente'] },
-  { name: 'Pedidos', href: '/pedidos', icon: FileText, roles: ['administrador', 'atendente'] },
-  { name: 'Equipamentos', href: '/equipamentos', icon: Package, roles: ['administrador', 'atendente'] },
-  { name: 'Ordem de Serviço', href: '/ordem-servico', icon: ClipboardList, roles: ['administrador', 'tecnico'] },
   { name: 'Agenda', href: '/agenda', icon: Calendar, roles: ['administrador', 'atendente'] },
+  { name: 'Pedidos', href: '/pedidos', icon: FileText, roles: ['administrador', 'atendente'] },
+  { name: 'Ordem de Serviço', href: '/ordem-servico', icon: ClipboardList, roles: ['administrador', 'tecnico'] },
   { name: 'Técnicos', href: '/tecnicos', icon: Users, roles: ['administrador'] },
+  { name: 'Equipamentos', href: '/equipamentos', icon: Package, roles: ['administrador', 'atendente'] },
   { name: 'Validação', href: '/validacao', icon: CheckCircle, roles: ['administrador'] },
   { name: 'Relatórios', href: '/relatorios', icon: BarChart3, roles: ['administrador'] },
   { name: 'Configurações', href: '/configuracoes', icon: Settings, roles: ['administrador'] },
