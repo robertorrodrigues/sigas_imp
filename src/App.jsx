@@ -18,6 +18,7 @@ import Configuracoes from '@/pages/Configuracoes';
 import Certificados from '@/pages/Certificados';
 import Login from '@/pages/Login';
 import Signup from '@/pages/Signup';
+import NotFound from '@/pages/NotFound';
 import { AuthProvider, useAuth } from '@/contexts/SupabaseAuthContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import {SettingsProvider} from "@/contexts/SettingsContext";
@@ -150,7 +151,7 @@ const AppRoutes = () => {
           </ProtectedRoute>
         } 
       />
-      <Route path="*" element={<Navigate to={user ? "/" : "/login"} />} />
+      <Route path="*" element={<NotFound />} />
     </Routes>
   );
 }
