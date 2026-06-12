@@ -469,6 +469,34 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
 
   const currentCategory = checklistItems[currentStep];
 
+  const isCategoryComplete = (category) =>
+    (category?.items ?? []).every((item) => Boolean(checklistData[item.id]));
+
+  const applyCurrentCategoryConforme = () => {
+    const categoryItems = currentCategory?.items ?? [];
+
+    setChecklistData((prev) => {
+      const next = { ...prev };
+      categoryItems.forEach((item) => {
+        next[item.id] = 'conforme';
+      });
+      return next;
+    });
+
+    setObservations((prev) => {
+      const next = { ...prev };
+      categoryItems.forEach((item) => {
+        delete next[item.id];
+      });
+      return next;
+    });
+
+    toast({
+      title: 'Categoria marcada como conforme',
+      description: `${categoryItems.length} item(ns) definidos como Conforme.`,
+    });
+  };
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-900 sm:bg-black/50 sm:backdrop-blur-sm">
       <motion.div
@@ -506,22 +534,39 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
 
         {/* Category Navigation */}
         <div className="mb-4 shrink-0">
-          <div className="relative">
-            <div className="flex space-x-2 overflow-x-auto pb-2">
-              {checklistItems.map((category, index) => (
-                <button
-                  key={category.id}
-                  onClick={() => setCurrentStep(index)}
-                  className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
-                    currentStep === index
-                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
-                      : 'bg-white/10 text-gray-300 hover:bg-white/20'
-                  }`}
-                >
-                  {category.category}
-                </button>
-              ))}
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 overflow-x-auto pb-2">
+              <div className="flex space-x-2 min-w-max">
+                {checklistItems.map((category, index) => {
+                  const complete = isCategoryComplete(category);
+
+                  return (
+                    <button
+                      key={category.id}
+                      onClick={() => setCurrentStep(index)}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-colors ${
+                        complete
+                          ? 'bg-green-500/20 text-green-100 border border-green-400/40'
+                          : currentStep === index
+                            ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white'
+                            : 'bg-white/10 text-gray-300 hover:bg-white/20'
+                      }`}
+                    >
+                      {category.category}
+                    </button>
+                  );
+                })}
+              </div>
             </div>
+
+            <Button
+              onClick={applyCurrentCategoryConforme}
+              variant="outline"
+              size="sm"
+              className="shrink-0 border-green-400/40 bg-green-500/10 text-green-200 hover:bg-green-500/20"
+            >
+              Conforme
+            </Button>
           </div>
         </div>
 
@@ -536,17 +581,17 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
               <div key={item.id} className="bg-white/5 rounded-lg p-3 sm:p-4">
                 <div className="flex flex-col sm:flex-row sm:items-start justify-between mb-3 gap-3">
                   <div className="flex-1">
-                    <div className="flex items-center flex-wrap gap-x-2 mb-2">
-                      <span className="text-blue-400 font-medium">{item.id}</span>
-                      {item.required && (
-                        <span className="text-red-400 text-xs font-semibold">OBRIGATÓRIO</span>
-                      )}
-                      {item.photoRequired && (
-                        <span className="text-orange-400 text-xs font-semibold">FOTO</span>
-                      )}
-                    </div>
+                   <div className="flex items-center flex-wrap gap-x-2 mb-2">
+                  <span className="text-blue-400 font-medium">{item.id}</span>
+
+                  {item.photoRequired && (
+                    <span className="text-orange-400 text-xs font-semibold">
+                      {item.required ? "FOTO OBRIGATÓRIA" : "FOTO OPCIONAL"}
+                    </span>
+                  )}
+                </div>
                     <p className="text-white text-sm sm:text-base">{item.criterio_aceitacao}</p>
-                  </div>
+              </div>
 
                   {item.photoRequired && (
                     <Button
