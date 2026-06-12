@@ -82,7 +82,28 @@ export const AuthProvider = ({ children }) => {
             title: 'Sign up Failed',
             description: error.message || 'Something went wrong',
           });
-        } else {
+        } else if (data?.user) {
+          try {
+            const profilePayload = {
+              id: data.user.id,
+              email: data.user.email,
+              name: safeOptions.data?.name || data.user.user_metadata?.name || '',
+              role: safeOptions.data?.role || 'administrador',
+              enabled: true,
+              validador: false,
+              xid_empresa: safeOptions.data?.xid_empresa ?? null,
+            };
+
+            const { error: profileError } = await supabase
+              .from('profiles')
+              .upsert(profilePayload, { onConflict: 'id' });
+
+            if (profileError) {
+              console.error('Supabase profile upsert error:', profileError);
+            }
+          } catch (profileErr) {
+            console.error('Unexpected profile upsert error:', profileErr);
+          }
           // Em projetos com confirmação por e-mail ativada:
           // data.user pode estar null e data.session será null.
           // O usuário precisa clicar no link do e-mail.

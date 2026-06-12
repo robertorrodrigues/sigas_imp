@@ -280,9 +280,54 @@ const OrdemServico = () => {
   const [showChecklist, setShowChecklist] = useState(false);
 
 
+  const resolveCompanyId = async () => {
+    const fromUser = user?.user_metadata?.xid_empresa ?? user?.xid_empresa ?? null;
+
+    if (fromUser) return fromUser;
+    if (!user?.id) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('xid_empresa')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Não foi possível resolver xid_empresa do perfil do usuário.', error);
+      return null;
+    }
+
+    return data?.xid_empresa ?? null;
+  };
+
   const fetchOS = async () => {
     setLoading(true);
+
+    const resolvedCompanyId = await resolveCompanyId();
     let query = supabase.from('ordem_servico').select('*');
+
+    if (resolvedCompanyId) {
+      const { data: empresaPedidos, error: empresaPedidosError } = await supabase
+        .from('pedidos')
+        .select('id')
+        .eq('xid_empresa', resolvedCompanyId);
+
+      if (empresaPedidosError) {
+        toast({ title: 'Erro ao buscar pedidos da empresa', description: empresaPedidosError.message, variant: 'destructive' });
+        setLoading(false);
+        return;
+      }
+
+      const pedidoIds = (empresaPedidos ?? []).map((item) => item.id);
+
+      if (!pedidoIds.length) {
+        setOsList([]);
+        setLoading(false);
+        return;
+      }
+
+      query = query.in('pedido_id', pedidoIds);
+    }
 
     if (filterStatus !== 'todos') {
       query = query.eq('status', filterStatus);
@@ -299,10 +344,17 @@ const OrdemServico = () => {
   };
 
   const fetchTecnicos = async () => {
-    const { data, error } = await supabase
+    const resolvedCompanyId = await resolveCompanyId();
+    let query = supabase
       .from('tecnico')
       .select('id, nome')
       .eq('status', 'ativo');
+
+    if (resolvedCompanyId) {
+      query = query.eq('xid_empresa', resolvedCompanyId);
+    }
+
+    const { data, error } = await query;
 
     if (!error) {
       setTecnicos(data || []);
@@ -320,10 +372,17 @@ const OrdemServico = () => {
 
 
   const fetchClientes = async () => {
-    const { data, error } = await supabase
+    const resolvedCompanyId = await resolveCompanyId();
+    let query = supabase
       .from('pedidos')
       .select('id,cliente_nome,tipo,endereco,cidade,estado,cep,email,telefone')
       .in('status', ['pendente', 'agendado', 'em_andamento']);
+
+    if (resolvedCompanyId) {
+      query = query.eq('xid_empresa', resolvedCompanyId);
+    }
+
+    const { data, error } = await query;
 
     if (!error) {
       setClientes(data || []);
@@ -331,10 +390,17 @@ const OrdemServico = () => {
   };
 
    const fetchPedidos = async () => {
-    const { data, error } = await supabase
+    const resolvedCompanyId = await resolveCompanyId();
+    let query = supabase
       .from('pedidos')
       .select('id, numero')
       .in('status', ['pendente', 'agendado', 'em_andamento']);
+
+    if (resolvedCompanyId) {
+      query = query.eq('xid_empresa', resolvedCompanyId);
+    }
+
+    const { data, error } = await query;
 
     if (!error) {
       setPedidos(data || []);
@@ -346,7 +412,7 @@ const OrdemServico = () => {
     fetchTecnicos();
     fetchClientes();
     fetchPedidos();
-  }, [filterStatus]);
+  }, [filterStatus, user]);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -358,6 +424,8 @@ const OrdemServico = () => {
 
   const handleSaveOS = async (os) => {
     try {
+      const resolvedCompanyId = await resolveCompanyId();
+
       if (os.id) {
         // atualizar
         const { error } = await supabase
@@ -376,6 +444,7 @@ const OrdemServico = () => {
             descricao: os.descricao,
             observacoes: os.observacoes,
             pedido_id: os.pedido_id,
+            xid_empresa: resolvedCompanyId,
 
           })
           .eq('id', os.id);
@@ -428,6 +497,7 @@ const OrdemServico = () => {
       observacoes: os.observacoes,
       created_by: user?.id,
       pedido_id: os.pedido_id,
+      xid_empresa: resolvedCompanyId,
       valor: os.valor,
     }])
     .select()
@@ -461,6 +531,7 @@ const OrdemServico = () => {
     if (checklistAntigo?.length) {
       const novoChecklist = checklistAntigo.map(item => ({
         ordem_servico_id: novaOS.id,
+        xid_empresa: resolvedCompanyId,
         item: item.item,
         resposta: item.resposta,
         observacao: item.observacao,

@@ -1,28 +1,141 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '@/contexts/SettingsContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { supabase } from '@/lib/customSupabaseClient';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 
 const GeneralSettings = () => {
   const { settings, updateSettings } = useSettings();
+  const { user } = useAuth();
   const [general, setGeneral] = useState(settings.general);
+  const [loading, setLoading] = useState(false);
   const { toast } = useToast();
 
+  const resolveCompanyId = async () => {
+    const fromUser = user?.user_metadata?.xid_empresa ?? user?.xid_empresa ?? null;
+
+    if (fromUser) return fromUser;
+    if (!user?.id) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('xid_empresa')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Não foi possível resolver xid_empresa do perfil do usuário.', error);
+      return null;
+    }
+
+    return data?.xid_empresa ?? null;
+  };
+
   useEffect(() => {
-    setGeneral(settings.general);
-  }, [settings.general]);
+    const loadCompanyInfo = async () => {
+      setLoading(true);
+      const companyId = await resolveCompanyId();
+
+      if (!companyId) {
+        setGeneral({
+          ...settings.general,
+          cnpj: formatCnpj(settings.general.cnpj),
+        });
+        setLoading(false);
+        return;
+      }
+
+      const { data, error } = await supabase
+        .from('empresa')
+        .select('nome, cnpj, endereco, email, telefone, contato, logo')
+        .eq('id', companyId)
+        .maybeSingle();
+
+      if (!error && data) {
+        setGeneral({
+          companyName: data.nome || settings.general.companyName,
+          cnpj: formatCnpj(data.cnpj || settings.general.cnpj),
+          address: data.endereco || settings.general.address,
+          email: data.email || '',
+          telefone: data.telefone || '',
+          contato: data.contato || '',
+          logo: data.logo || '',
+        });
+      } else {
+        setGeneral({
+          ...settings.general,
+          cnpj: formatCnpj(settings.general.cnpj),
+        });
+      }
+
+      setLoading(false);
+    };
+
+    loadCompanyInfo();
+  }, [settings.general, user]);
+
+  const formatCnpj = (value) => {
+    const digits = String(value || '').replace(/\D/g, '').slice(0, 14);
+
+    if (digits.length <= 2) return digits;
+    if (digits.length <= 5) return `${digits.slice(0, 2)}.${digits.slice(2)}`;
+    if (digits.length <= 8) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5)}`;
+    if (digits.length <= 12) return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8)}`;
+
+    return `${digits.slice(0, 2)}.${digits.slice(2, 5)}.${digits.slice(5, 8)}/${digits.slice(8, 12)}-${digits.slice(12, 14)}`;
+  };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
+
+    if (name === 'cnpj') {
+      setGeneral(prev => ({ ...prev, [name]: formatCnpj(value) }));
+      return;
+    }
+
     setGeneral(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSave = () => {
-    updateSettings('general', general);
-    toast({
-      title: "Configurações salvas!",
-      description: "As informações da empresa foram atualizadas.",
-    });
+  const handleSave = async () => {
+    try {
+      const companyId = await resolveCompanyId();
+
+      if (!companyId) {
+        toast({
+          title: 'Empresa não identificada',
+          description: 'Não foi possível localizar a empresa vinculada ao usuário logado.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const { error } = await supabase
+        .from('empresa')
+        .update({
+          nome: general.companyName || null,
+          cnpj: String(general.cnpj || '').replace(/\D/g, '') || null,
+          endereco: general.address || null,
+          email: general.email || null,
+          telefone: general.telefone || null,
+          contato: general.contato || null,
+          logo: general.logo || null,
+        })
+        .eq('id', companyId);
+
+      if (error) {
+        toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+        return;
+      }
+
+      updateSettings('general', general);
+      toast({
+        title: 'Configurações salvas!',
+        description: 'As informações da empresa foram atualizadas.',
+      });
+    } catch (err) {
+      toast({ title: 'Erro inesperado', description: err.message || String(err), variant: 'destructive' });
+    }
   };
 
   return (
@@ -32,6 +145,7 @@ const GeneralSettings = () => {
         <p className="text-sm text-gray-400">Dados da sua empresa para relatórios e certificados.</p>
       </div>
       <div className="space-y-4">
+        {loading && <p className="text-sm text-blue-200">Carregando dados da empresa...</p>}
         <input 
           type="text" 
           name="companyName"

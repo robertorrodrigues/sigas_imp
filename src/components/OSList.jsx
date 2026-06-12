@@ -4,12 +4,14 @@ import { motion } from 'framer-motion';
 import { Eye, Play, MapPin, Calendar, User, Clock, Download, PenTool } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 import { generateInspectionReport } from '../utils/generateInspectionReport';
 import { generateContract } from '../utils/generateContract';
 import SignatureModal from './SignatureModal';
 
 const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
+  const { user } = useAuth();
   const [ordens, setOrdens] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -21,13 +23,56 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
   const [currentOrdem, setCurrentOrdem] = useState(null);
   const [signatures, setSignatures] = useState({});
 
+  const resolveCompanyId = async () => {
+    const fromUser = user?.user_metadata?.xid_empresa ?? user?.xid_empresa ?? null;
+
+    if (fromUser) return fromUser;
+    if (!user?.id) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('xid_empresa')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Não foi possível resolver xid_empresa do perfil do usuário.', error);
+      return null;
+    }
+
+    return data?.xid_empresa ?? null;
+  };
+
   useEffect(() => {
     const fetchOrdens = async () => {
       try {
-        const { data, error } = await supabase
+        setLoading(true);
+        const resolvedCompanyId = await resolveCompanyId();
+
+        if (!resolvedCompanyId) {
+          setOrdens([]);
+          return;
+        }
+
+        const { data: empresaPedidos, error: empresaPedidosError } = await supabase
+          .from('pedidos')
+          .select('id')
+          .eq('xid_empresa', resolvedCompanyId);
+
+        if (empresaPedidosError) throw empresaPedidosError;
+
+        const pedidoIds = (empresaPedidos ?? []).map((item) => item.id);
+
+        if (!pedidoIds.length) {
+          setOrdens([]);
+          return;
+        }
+
+        let query = supabase
           .from('ordem_servico')
           .select(`
             id,
+            xid_empresa,
             numero,
             status,
             endereco,
@@ -52,17 +97,27 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
               telefone,
               numero
             )
-          `);
+          `)
+          .in('pedido_id', pedidoIds);
+
+        if (filterStatus && filterStatus !== 'todos') {
+          query = query.eq('status', filterStatus);
+        }
+
+        const { data, error } = await query.order('data_agendada', { ascending: false });
         if (error) throw error;
+
         setOrdens(data ?? []);
       } catch (err) {
         setError(err.message);
+        setOrdens([]);
       } finally {
         setLoading(false);
       }
     };
+
     fetchOrdens();
-  }, []);
+  }, [filterStatus, user]);
 
   const getStatusColor = (status) => {
     const colors = {
@@ -225,6 +280,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
       // Persistir assinatura na tabela `checklist` como uma linha especial
       const upsertRow = {
         os_id: currentOrdem.id,
+        xid_empresa: currentOrdem?.xid_empresa ?? null,
         item_id: 'signature',
         os_numero: currentOrdem.numero ?? null,
         categoria: 'Assinaturas',

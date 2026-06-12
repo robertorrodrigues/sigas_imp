@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../../lib/customSupabaseClient';  
 import { useSettings } from '@/contexts/SettingsContext';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { PlusCircle, Edit, Trash2 } from 'lucide-react';
@@ -73,6 +74,7 @@ const UserForm = ({ user, onSave, onCancel }) => {
 
 const UserSettings = ({ openNewUserModal = false }) => {
   const { settings, updateSettings } = useSettings();
+  const { user } = useAuth();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -80,12 +82,46 @@ const UserSettings = ({ openNewUserModal = false }) => {
   const [dbUsers, setDbUsers] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  const fetchProfiles = async () => {
-    setLoading(true);
+  const resolveCompanyId = async () => {
+    const fromUser = user?.user_metadata?.xid_empresa ?? user?.xid_empresa ?? null;
+
+    if (fromUser) {
+      return fromUser;
+    }
+
+    if (!user?.id) {
+      return null;
+    }
+
     const { data, error } = await supabase
       .from('profiles')
-      .select('id, name, email, role, enabled')
+      .select('xid_empresa')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Não foi possível resolver xid_empresa do perfil do usuário.', error);
+      return null;
+    }
+
+    return data?.xid_empresa ?? null;
+  };
+
+  const fetchProfiles = async () => {
+    setLoading(true);
+
+    const resolvedCompanyId = await resolveCompanyId();
+
+    let query = supabase
+      .from('profiles')
+      .select('id, name, email, role, enabled, xid_empresa')
       .order('name', { ascending: true });
+
+    if (resolvedCompanyId) {
+      query = query.eq('xid_empresa', resolvedCompanyId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       toast({ title: 'Erro ao buscar usuários', description: error.message, variant: 'destructive' });
@@ -129,7 +165,9 @@ const UserSettings = ({ openNewUserModal = false }) => {
   try {
     if (user.id) {
       // atualizar usuário existente
-      const { error } = await supabase
+      const resolvedCompanyId = await resolveCompanyId();
+
+      let updateQuery = supabase
         .from('profiles')
         .update({
           name: user.name,
@@ -137,8 +175,15 @@ const UserSettings = ({ openNewUserModal = false }) => {
           role: user.role,
           enabled: user.enabled ?? true,
           validador: user.validation ?? false,
+          xid_empresa: resolvedCompanyId,
         })
         .eq('id', user.id);
+
+      if (resolvedCompanyId) {
+        updateQuery = updateQuery.eq('xid_empresa', resolvedCompanyId);
+      }
+
+      const { error } = await updateQuery;
 
       if (error) {
         toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' });
@@ -150,6 +195,8 @@ const UserSettings = ({ openNewUserModal = false }) => {
       }
     } else {
       // inserir novo registro em profiles
+      const resolvedCompanyId = await resolveCompanyId();
+
       const { data, error } = await supabase
         .from('profiles')
         .insert([{
@@ -158,6 +205,7 @@ const UserSettings = ({ openNewUserModal = false }) => {
           role: user.role,
           enabled: user.enabled ?? true,
           validador: user.validation ?? false,
+          xid_empresa: resolvedCompanyId,
         }])
         .select() // retorna o registro inserido
         .single();
@@ -179,7 +227,15 @@ const UserSettings = ({ openNewUserModal = false }) => {
 };
 
   const handleDeleteUser = async (userId) => {
-    const { error } = await supabase.from('profiles').delete().eq('id', userId);
+    const resolvedCompanyId = await resolveCompanyId();
+
+    let query = supabase.from('profiles').delete().eq('id', userId);
+
+    if (resolvedCompanyId) {
+      query = query.eq('xid_empresa', resolvedCompanyId);
+    }
+
+    const { error } = await query;
     if (error) {
       toast({ title: 'Erro ao deletar', description: error.message, variant: 'destructive' });
     } else {

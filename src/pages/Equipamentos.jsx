@@ -37,12 +37,40 @@ const Equipamentos = () => {
     }
   }, [location.search]);
 
+  const resolveCompanyId = async () => {
+    const fromUser = user?.user_metadata?.xid_empresa ?? user?.xid_empresa ?? null;
+
+    if (fromUser) return fromUser;
+    if (!user?.id) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('xid_empresa')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Não foi possível resolver xid_empresa do perfil do usuário.', error);
+      return null;
+    }
+
+    return data?.xid_empresa ?? null;
+  };
+
   const fetchEquipamentos = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+
+    const resolvedCompanyId = await resolveCompanyId();
+    let query = supabase
       .from('equipamentos')
       .select('*')
       .order('nome', { ascending: true });
+
+    if (resolvedCompanyId) {
+      query = query.eq('xid_empresa', resolvedCompanyId);
+    }
+
+    const { data, error } = await query;
 
     if (error) {
       toast({ title: 'Erro ao buscar equipamentos', description: error.message, variant: 'destructive' });
@@ -85,18 +113,27 @@ const Equipamentos = () => {
       return;
     }
 
+    const resolvedCompanyId = await resolveCompanyId();
+
     const payload = {
       patrimonio: formData.patrimonio.trim() || null,
       nome: formData.nome.trim(),
       validade_anos: formData.validade_anos ? Number(formData.validade_anos) : null,
       status: formData.status || 'disponivel',
+      xid_empresa: resolvedCompanyId,
     };
 
     if (editingEquipamento?.id) {
-      const { error } = await supabase
+      let updateQuery = supabase
         .from('equipamentos')
         .update(payload)
         .eq('id', editingEquipamento.id);
+
+      if (resolvedCompanyId) {
+        updateQuery = updateQuery.eq('xid_empresa', resolvedCompanyId);
+      }
+
+      const { error } = await updateQuery;
 
       if (error) {
         toast({ title: 'Erro ao atualizar equipamento', description: error.message, variant: 'destructive' });
@@ -123,7 +160,15 @@ const Equipamentos = () => {
   };
 
   const handleDeleteEquipamento = async (equipamentoId) => {
-    const { error } = await supabase.from('equipamentos').delete().eq('id', equipamentoId);
+    const resolvedCompanyId = await resolveCompanyId();
+
+    let query = supabase.from('equipamentos').delete().eq('id', equipamentoId);
+
+    if (resolvedCompanyId) {
+      query = query.eq('xid_empresa', resolvedCompanyId);
+    }
+
+    const { error } = await query;
     if (error) {
       toast({ title: 'Erro ao deletar equipamento', description: error.message, variant: 'destructive' });
       return;

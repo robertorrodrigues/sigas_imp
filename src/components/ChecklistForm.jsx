@@ -3,11 +3,13 @@ import { motion } from 'framer-motion';
 import { X, Camera, Save, Send, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import PhotoCapture from '@/components/PhotoCapture';
 import { supabase } from '@/lib/customSupabaseClient';
 import { checklistItems } from '@/lib/checklistData';
 
 const ChecklistForm = ({ os, onClose, onSubmit }) => {
+  const { user } = useAuth();
   const [currentStep, setCurrentStep] = useState(0); // <-- corrigido
   const [showPhotoCapture, setShowPhotoCapture] = useState(false);
   const [currentPhotoItem, setCurrentPhotoItem] = useState(null);
@@ -46,6 +48,26 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
 
   // Total de itens do checklist para calcular status de conclusão
   const TOTAL_ITEMS = 54;
+
+  const resolveCompanyId = async () => {
+    const fromUser = user?.user_metadata?.xid_empresa ?? user?.xid_empresa ?? null;
+
+    if (fromUser) return fromUser;
+    if (!user?.id) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('xid_empresa')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Não foi possível resolver xid_empresa do perfil do usuário.', error);
+      return null;
+    }
+
+    return data?.xid_empresa ?? null;
+  };
 
   // Mapeamento entre texto no BD e opção selecionada na UI
   const dbResultadoToUI = (r) => {
@@ -186,6 +208,7 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
 
   const handleSaveDraft = async () => {
     try {
+      const resolvedCompanyId = await resolveCompanyId();
       const draftEntries = [];
 
       checklistItems.forEach((category) => {
@@ -210,10 +233,11 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
 
             draftEntries.push({
               os_id: os.id,
-              os_numero: os.numero, // opcional
+              os_numero: os.numero,
+              xid_empresa: resolvedCompanyId,
               item_id: item.id,
               categoria: category.category,
-              descricao: item.text,
+              descricao: item.criterio_aceitacao,
               resultado,
               observacao,
               foto_url,
@@ -294,6 +318,8 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
   };
 
   const handleSubmitChecklist = async () => {
+    const resolvedCompanyId = await resolveCompanyId();
+
     const requiredItems = checklistItems.flatMap((category) =>
       category.items.filter((item) => item.required)
     );
@@ -315,7 +341,35 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
   try {
       const checklistEntries = [];
 
-  // ... monta checklistEntries ...
+      checklistItems.forEach((category) => {
+        category.items.forEach((item) => {
+          const rawResultado = checklistData[item.id];
+          const rawObs = observations[item.id];
+          const photo = photos[item.id];
+
+          if (!rawResultado && !rawObs?.trim() && !photo) return;
+
+          const resultado = uiResultadoToDB(rawResultado);
+          const observacao =
+            rawResultado === 'conforme' || rawResultado === 'nao_aplicavel'
+              ? ''
+              : (typeof rawObs === 'string' ? rawObs.trim() : '');
+
+          checklistEntries.push({
+            os_id: os.id,
+            os_numero: os.numero,
+            xid_empresa: resolvedCompanyId,
+            item_id: item.id,
+            categoria: category.category,
+            descricao: item.criterio_aceitacao,
+            resultado,
+            observacao,
+            foto_url: photo ? photo.dataUrl : null,
+            foto_metadata: photo ? JSON.stringify(photo.metadata ?? {}) : null,
+            updated_at: new Date().toISOString(),
+          });
+        });
+      });
 
   // ✅ Verifica se existe alguma resposta "Não Conforme"
     flagNaoConforme = checklistEntries.some((entry) =>

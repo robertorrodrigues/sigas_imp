@@ -41,9 +41,35 @@ const Pedidos = () => {
     }
   }, [location.search]);
 
+  const resolveCompanyId = async () => {
+    const fromUser = user?.user_metadata?.xid_empresa ?? user?.xid_empresa ?? null;
+
+    if (fromUser) return fromUser;
+    if (!user?.id) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('xid_empresa')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Não foi possível resolver xid_empresa do perfil do usuário.', error);
+      return null;
+    }
+
+    return data?.xid_empresa ?? null;
+  };
+
   const fetchPedidos = async () => {
     setLoading(true);
+
+    const resolvedCompanyId = await resolveCompanyId();
     let query = supabase.from('pedidos').select('*');
+
+    if (resolvedCompanyId) {
+      query = query.eq('xid_empresa', resolvedCompanyId);
+    }
 
     if (filterStatus !== 'todos') {
       query = query.eq('status', filterStatus);
@@ -62,7 +88,7 @@ const Pedidos = () => {
 
   useEffect(() => {
     fetchPedidos();
-  }, [filterStatus]);
+  }, [filterStatus, user]);
 
   const handleExcelUpload = (file) => {
     toast({
@@ -74,9 +100,11 @@ const Pedidos = () => {
 
   const handleSavePedido = async (formData) => {
     try {
+      const resolvedCompanyId = await resolveCompanyId();
+
       if (editingPedido?.id) {
         // Atualizar pedido existente
-        const { error } = await supabase
+        let updateQuery = supabase
           .from('pedidos')
           .update({
             numero: formData.numero,
@@ -93,8 +121,15 @@ const Pedidos = () => {
             observacoes: formData.observacoes,
             data_atualizacao: new Date().toISOString(),
             cliente_naturgy: formData.codigoNaturgy,
+            xid_empresa: resolvedCompanyId,
           })
           .eq('id', editingPedido.id);
+
+        if (resolvedCompanyId) {
+          updateQuery = updateQuery.eq('xid_empresa', resolvedCompanyId);
+        }
+
+        const { error } = await updateQuery;
 
         if (error) {
           toast({ title: 'Erro ao atualizar pedido', description: error.message, variant: 'destructive' });
@@ -127,6 +162,7 @@ const Pedidos = () => {
             observacoes: formData.observacoes,
             criado_por: user?.id,
             cliente_naturgy: formData.codigoNaturgy,
+            xid_empresa: resolvedCompanyId,
           }]);
 
         if (error) {
@@ -144,7 +180,15 @@ const Pedidos = () => {
   };
 
   const handleDeletePedido = async (pedidoId) => {
-    const { error } = await supabase.from('pedidos').delete().eq('id', pedidoId);
+    const resolvedCompanyId = await resolveCompanyId();
+
+    let query = supabase.from('pedidos').delete().eq('id', pedidoId);
+
+    if (resolvedCompanyId) {
+      query = query.eq('xid_empresa', resolvedCompanyId);
+    }
+
+    const { error } = await query;
     if (error) {
       toast({ title: 'Erro ao deletar', description: error.message, variant: 'destructive' });
     } else {

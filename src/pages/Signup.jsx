@@ -1,12 +1,13 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, UserPlus, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { useNavigate } from 'react-router-dom';
+import { supabase } from '@/lib/customSupabaseClient';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-const Signup = () => {
+const Signup = ({ companySlug: companySlugProp }) => {
   const [name, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -16,6 +17,16 @@ const Signup = () => {
   const { toast } = useToast();
   const { signUp } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const companySlug = useMemo(() => {
+    if (companySlugProp) return companySlugProp;
+
+    const [firstSegment] = location.pathname.split('/').filter(Boolean);
+    return firstSegment && !['login', 'signup'].includes(firstSegment) ? firstSegment : null;
+  }, [companySlugProp, location.pathname]);
+
+  const logoSrc = companySlug ? `/images/${companySlug}/logo.png` : '/images/logoSigas.png';
 
   const handleSignup = async (e) => {
     e.preventDefault();
@@ -38,42 +49,48 @@ const Signup = () => {
 
     setIsLoading(true);
 
-    //const {data, error} = await SupabaseAuthClient.useAuth.signUp({ email, password, options: { data: { full_name: fullName } } });
+    try {
+      const empresaSlugToUse = companySlug || 'gasmetro';
+      const { data: empresaData, error: empresaError } = await supabase
+        .from('empresa')
+        .select('id')
+        .eq('logo', empresaSlugToUse)
+        .maybeSingle();
 
-    toast({
-        title: 'Cadastro ',
-        description: `Verifique email - ${email}, pdw - ${password}, name - ${name}.`,
+      if (empresaError || !empresaData?.id) {
+        toast({
+          title: 'Empresa não encontrada',
+          description: 'Não foi possível identificar a empresa para esse cadastro.',
+          variant: 'destructive',
+        });
+        setIsLoading(false);
+        return;
+      }
+
+      const { error } = await signUp(email, password, {
+        data: {
+          name,
+          role: 'administrador',
+          xid_empresa: empresaData.id,
+        },
       });
 
-    // Ajuste a chamada signUp conforme a implementação do seu useAuth (ex.: signUp(email, password, fullName) ou signUp({ email, password, data: { full_name: fullName } }))
-      //<option value="administrador">Administrador</option>
-      //  <option value="tecnico">Técnico</option>
-      //  <option value="atendente">Atendente</option>
-    
-    const res = await signUp( email, password, {
-      data: { 
-        name,
-        role: 'administrador',
-     }
-    });
-    //const res = await signUp(email, password,name);
-    //const error = res?.error;
-
-    if (!error) {
-      toast({
-        title: 'Cadastro realizado!',
-        description: 'Verifique seu email para confirmação, se aplicável.',
-      });
-      navigate('/');
-    } else {
-      toast({
-        title: 'Erro no cadastro',
-        description: error.message || 'Não foi possível criar a conta.',
-        variant: 'destructive',
-      });
+      if (!error) {
+        toast({
+          title: 'Cadastro realizado!',
+          description: 'Verifique seu email para confirmação, se aplicável.',
+        });
+        navigate(companySlug ? `/${companySlug}/login` : '/login');
+      } else {
+        toast({
+          title: 'Erro no cadastro',
+          description: error.message || 'Não foi possível criar a conta.',
+          variant: 'destructive',
+        });
+      }
+    } finally {
+      setIsLoading(false);
     }
-
-    setIsLoading(false);
   };
 
   return (
@@ -85,11 +102,22 @@ const Signup = () => {
         className="w-full max-w-md bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20 shadow-2xl"
       >
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="flex items-center justify-center mb-4">
+            <img
+              src={logoSrc}
+              alt={companySlug ? `Logo ${companySlug}` : 'Logo SIGas'}
+              className="h-16 w-auto rounded-xl object-contain bg-white/10 p-2 shadow-lg"
+              onError={(event) => {
+                event.currentTarget.src = '/images/logoSigas.png';
+              }}
+            />
+          </div>
+          <div className="flex items-center justify-center gap-2 mb-2">
             <Flame className="w-10 h-10 text-orange-400" />
             <h1 className="text-3xl font-bold text-white">SIGas</h1>
           </div>
           <p className="text-gray-300 mt-2">Crie sua conta</p>
+          {companySlug && <p className="text-sm text-blue-200 mt-1">Empresa: {companySlug}</p>}
         </div>
 
         <form onSubmit={handleSignup} className="space-y-6">
@@ -162,7 +190,7 @@ const Signup = () => {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-400">
-            Já possui conta? <button onClick={() => navigate('/login')} className="text-white underline">Entrar</button>
+            Já possui conta? <button onClick={() => navigate(companySlug ? `/${companySlug}/login` : '/login')} className="text-white underline">Entrar</button>
           </p>
         </div>
       </motion.div>

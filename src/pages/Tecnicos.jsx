@@ -29,9 +29,35 @@ const Tecnicos = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
+  const resolveCompanyId = async () => {
+    const fromUser = user?.user_metadata?.xid_empresa ?? user?.xid_empresa ?? null;
+
+    if (fromUser) return fromUser;
+    if (!user?.id) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('xid_empresa')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Não foi possível resolver xid_empresa do perfil do usuário.', error);
+      return null;
+    }
+
+    return data?.xid_empresa ?? null;
+  };
+
   const fetchTecnicos = async () => {
     setLoading(true);
+
+    const resolvedCompanyId = await resolveCompanyId();
     let query = supabase.from('tecnico').select('*');
+
+    if (resolvedCompanyId) {
+      query = query.eq('xid_empresa', resolvedCompanyId);
+    }
 
     if (filterStatus !== 'todos') {
       query = query.eq('status', filterStatus);
@@ -54,9 +80,11 @@ const Tecnicos = () => {
 
   const handleSaveTecnico = async (formData) => {
     try {
+      const resolvedCompanyId = await resolveCompanyId();
+
       if (editingTecnico?.id) {
         // Atualizar técnico
-        const { error } = await supabase
+        let updateQuery = supabase
           .from('tecnico')
           .update({
             nome: formData.nome,
@@ -69,8 +97,15 @@ const Tecnicos = () => {
             crea_validade: formData.crea_validade,
             status: formData.status,
             data_atualizacao: new Date().toISOString(),
+            xid_empresa: resolvedCompanyId,
           })
           .eq('id', editingTecnico.id);
+
+        if (resolvedCompanyId) {
+          updateQuery = updateQuery.eq('xid_empresa', resolvedCompanyId);
+        }
+
+        const { error } = await updateQuery;
 
         if (error) {
           toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' });
@@ -96,6 +131,7 @@ const Tecnicos = () => {
             status: 'ativo',
             data_admissao: new Date().toISOString().split('T')[0],
             criado_por: user?.id,
+            xid_empresa: resolvedCompanyId,
           }]);
 
         if (error) {
@@ -113,7 +149,15 @@ const Tecnicos = () => {
   };
 
   const handleDeleteTecnico = async (tecnicoId) => {
-    const { error } = await supabase.from('tecnico').delete().eq('id', tecnicoId);
+    const resolvedCompanyId = await resolveCompanyId();
+
+    let query = supabase.from('tecnico').delete().eq('id', tecnicoId);
+
+    if (resolvedCompanyId) {
+      query = query.eq('xid_empresa', resolvedCompanyId);
+    }
+
+    const { error } = await query;
     if (error) {
       toast({ title: 'Erro ao deletar', description: error.message, variant: 'destructive' });
     } else {

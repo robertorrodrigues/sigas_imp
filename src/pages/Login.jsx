@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, LogIn, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
-const Login = () => {
+const Login = ({ companySlug: companySlugProp }) => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -14,6 +14,16 @@ const Login = () => {
   const { toast } = useToast();
   const { signIn } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  const companySlug = useMemo(() => {
+    if (companySlugProp) return companySlugProp;
+
+    const [firstSegment] = location.pathname.split('/').filter(Boolean);
+    return firstSegment && !['login', 'signup'].includes(firstSegment) ? firstSegment : null;
+  }, [companySlugProp, location.pathname]);
+
+  const logoSrc = companySlug ? `/images/${companySlug}/logo.png` : '/images/logoSigas.png';
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -35,7 +45,7 @@ const Login = () => {
         title: "Login bem-sucedido!",
         description: "Bem-vindo de volta!",
       });
-      navigate('/');
+      navigate(companySlug ? `/${companySlug}` : '/');
     }
     
     setIsLoading(false);
@@ -50,11 +60,22 @@ const Login = () => {
         className="w-full max-w-md bg-white/10 backdrop-blur-xl rounded-2xl p-8 border border-white/20 shadow-2xl"
       >
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="flex items-center justify-center mb-4">
+            <img
+              src={logoSrc}
+              alt={companySlug ? `Logo ${companySlug}` : 'Logo SIGas'}
+              className="h-16 w-auto rounded-xl object-contain bg-white/10 p-2 shadow-lg"
+              onError={(event) => {
+                event.currentTarget.src = '/images/logoSigas.png';
+              }}
+            />
+          </div>
+          <div className="flex items-center justify-center gap-2 mb-2">
             <Flame className="w-10 h-10 text-orange-400" />
             <h1 className="text-3xl font-bold text-white">SIGas</h1>
           </div>
           <p className="text-gray-300 mt-2">Sistema de Inspeção de Gás</p>
+          {companySlug && <p className="text-sm text-blue-200 mt-1">Empresa: {companySlug}</p>}
         </div>
 
         <form onSubmit={handleLogin} className="space-y-6">
@@ -105,13 +126,13 @@ const Login = () => {
 
         <div className="mt-6 text-center">
           <p className="text-sm text-gray-400">
-            Faça login com suas credenciais do Supabase
+           
           </p>
           <p className="text-sm text-gray-400 mt-2">
             Não tem conta?{" "}
             <button
               type="button"
-              onClick={() => navigate('/signup')}
+              onClick={() => navigate(companySlug ? `/${companySlug}/signup` : '/signup')}
               className="text-white underline"
             >
               Criar conta
