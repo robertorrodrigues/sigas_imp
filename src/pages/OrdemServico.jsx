@@ -63,17 +63,35 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes, pedidos }) => {
   };
 
   const syncPedidoCliente = (value) => {
+    const pedido = pedidos.find(p => p.id == value);
+    if (!pedido) {
+      setFormData(prev => ({
+        ...prev,
+        pedido_id: value,
+        cliente_id: value,
+      }));
+      return;
+    }
+
     setFormData(prev => ({
       ...prev,
       pedido_id: value,
-      cliente_id: value
+      cliente_id: value,
+      cliente_nome: pedido.cliente_nome,
+      tipo_inspecao: pedido.tipo,
+      endereco: pedido.endereco,
+      cidade: pedido.cidade,
+      estado: pedido.estado,
+      cep: pedido.cep,
+      email: pedido.email,
+      telefone: pedido.telefone,
     }));
   };
 
   const handleClienteChange = (e) => {
-  const id = e.target.value;
+    const id = e.target.value;
 
-  const cliente = clientes.find(c => c.id == id);
+    const cliente = clientes.find(c => c.id == id);
 
     if (!cliente) return;
 
@@ -85,7 +103,7 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes, pedidos }) => {
 
       // preenche os campos automáticos
       cliente_nome: cliente.cliente_nome,
-      tipo: cliente.tipo,
+      tipo_inspecao: cliente.tipo,
       endereco: cliente.endereco,
       cidade: cliente.cidade,
       estado: cliente.estado,
@@ -98,7 +116,8 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes, pedidos }) => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    if (!formData.numero || !formData.endereco || !formData.cidade || !formData.data_agendada) {
+    if (!formData.endereco || !formData.cidade || !formData.estado || !formData.cep || !formData.data_agendada || !formData.valor || !formData.tecnico_id 
+    ) {
       alert('Preencha todos os campos obrigatórios');
       return;
     }
@@ -107,15 +126,6 @@ const OSForm = ({ os, onSave, onCancel, tecnicos, clientes, pedidos }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4 max-h-96 overflow-y-auto pr-4">
-      <input
-        type="text"
-        name="numero"
-        value={formData.numero}
-        onChange={handleChange}
-        placeholder="Número da OS"
-        required
-        className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
-      />
       
       <select
         name="pedido_id"
@@ -393,7 +403,7 @@ const OrdemServico = () => {
     const resolvedCompanyId = await resolveCompanyId();
     let query = supabase
       .from('pedidos')
-      .select('id, numero')
+      .select('id, numero, cliente_nome, tipo, endereco, cidade, estado, cep, email, telefone')
       .in('status', ['pendente', 'agendado', 'em_andamento']);
 
     if (resolvedCompanyId) {
@@ -479,11 +489,15 @@ const OrdemServico = () => {
   // ✅ 2. Define status inicial da nova OS
   const statusNovaOS = osNaoConforme ? 'em_progresso' : os.status;
 
+  // Criar nova OS
+        const numeroSequencial = String(Math.floor(Math.random() * 100000)).padStart(6, '0');
+        const numeroOS = `OS-${new Date().getFullYear()}-${numeroSequencial}`;
+
   // ✅ 3. Cria nova OS
   const { data: novaOS, error: insertError } = await supabase
     .from('ordem_servico')
     .insert([{
-      numero: os.numero,
+      numero: numeroOS,
       cliente_id: os.cliente_id,
       endereco: os.endereco,
       cidade: os.cidade,

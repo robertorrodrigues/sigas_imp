@@ -72,6 +72,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
           .from('ordem_servico')
           .select(`
             id,
+            pedido_id,
             xid_empresa,
             numero,
             status,
@@ -85,6 +86,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
             norma:norma_id(nome),
             tecnico:tecnico_id(nome),
             pedidos:pedido_id(
+              id,
               cliente_nome,
               endereco,
               cidade,

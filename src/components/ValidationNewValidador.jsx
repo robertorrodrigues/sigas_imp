@@ -3,9 +3,11 @@
 import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const ValidationNewValidador = ({ validation, onClose }) => {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
 
@@ -15,17 +17,45 @@ const ValidationNewValidador = ({ validation, onClose }) => {
   const [selectedExisting, setSelectedExisting] = useState(null);
   const [selectedNew, setSelectedNew] = useState(null);
 
+  const resolveCompanyId = async () => {
+    const fromUser = user?.user_metadata?.xid_empresa ?? user?.xid_empresa ?? null;
+
+    if (fromUser) return fromUser;
+    if (!user?.id) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('xid_empresa')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Não foi possível resolver xid_empresa do perfil do usuário.', error);
+      return null;
+    }
+
+    return data?.xid_empresa ?? null;
+  };
+
   // Carrega listas
   useEffect(() => {
     const load = async () => {
       try {
         setErr(null);
 
+        const resolvedCompanyId = await resolveCompanyId();
+        if (!resolvedCompanyId) {
+          setValidators([]);
+          setNonValidators([]);
+          return;
+        }
+
         // 1) Quem já é validador
         const { data: valids, error: err1 } = await supabase
           .from('profiles')
           .select('id, name, email')
           .eq('validador', true)
+          .eq('xid_empresa', resolvedCompanyId)
           .order('name', { ascending: true });
 
         if (err1) throw err1;
@@ -35,6 +65,7 @@ const ValidationNewValidador = ({ validation, onClose }) => {
           .from('profiles')
           .select('id, name, email')
           .neq('validador', true)
+          .eq('xid_empresa', resolvedCompanyId)
           .order('name', { ascending: true });
 
         if (err2) throw err2;
@@ -47,7 +78,7 @@ const ValidationNewValidador = ({ validation, onClose }) => {
     };
 
     load();
-  }, []);
+  }, [user]);
 
   // VINCULAR EXISTENTE 
   const handleAttachExisting = async () => {

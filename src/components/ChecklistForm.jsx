@@ -206,6 +206,119 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
     toast({ title: 'Foto capturada!', description: 'Foto anexada ao item do checklist.' });
   };
 
+  //nova funcionalidade
+  const handleSaveDraft = async () => {
+  try {
+    const resolvedCompanyId = await resolveCompanyId();
+    const draftEntries = [];
+
+    checklistItems.forEach((category) => {
+      category.items.forEach((item) => {
+        const rawResultado = checklistData[item.id];
+        const rawObs = observations[item.id];
+        const photo = photos[item.id];
+
+        const hasResultado = !!rawResultado;
+        const hasObs = !!rawObs?.trim();
+        const hasPhoto = !!photo;
+
+        if (hasResultado || hasObs || hasPhoto) {
+          const resultado = uiResultadoToDB(rawResultado);
+          const observacao =
+            rawResultado === 'conforme' || rawResultado === 'nao_aplicavel'
+              ? ''
+              : (typeof rawObs === 'string' ? rawObs.trim() : '');
+
+          const foto_url = photo ? photo.dataUrl : null;
+          const foto_metadata = photo ? JSON.stringify(photo.metadata ?? {}) : null;
+
+          draftEntries.push({
+            os_id: os.id,
+            os_numero: os.numero,
+            xid_empresa: resolvedCompanyId,
+            item_id: item.id,
+            categoria: category.category,
+            descricao: item.criterio_aceitacao,
+            resultado,
+            observacao,
+            foto_url,
+            foto_metadata,
+            created_at: new Date().toISOString(),
+          });
+        }
+      });
+    });
+
+    if (draftEntries.length === 0) {
+      toast({
+        title: 'Nenhum dado para salvar',
+        description: 'Preencha algum item, observação ou foto para salvar um rascunho.'
+      });
+      return;
+    }
+
+    const { error: upsertError } = await supabase
+      .from('checklist')
+      .upsert(draftEntries, { onConflict: 'os_id,item_id' });
+
+    if (upsertError) throw upsertError;
+
+    const { count, error: countError } = await supabase
+      .from('checklist')
+      .select('*', { count: 'exact' })
+      .eq('os_id', os.id);
+
+    if (countError) throw countError;
+
+    const novoStatus =
+      count === TOTAL_ITEMS ? 'em_progresso' :
+      count > 0             ? 'em_progresso' :
+                              null;
+
+    if (novoStatus) {
+      const updatePayload = { status: novoStatus };
+
+      if (novoStatus === 'concluido') {
+        updatePayload.data_conclusao = nowLocalTimestamp();
+      }
+
+      const { error: updateError } = await supabase
+        .from('ordem_servico')
+        .update(updatePayload)
+        .eq('id', os.id);
+
+      if (updateError) throw updateError;
+    }
+
+    // ✅ ✅ ✅ NOVA REGRA ROBUSTA APLICADA AQUI ✅ ✅ ✅
+    // Sempre que houver salvamento, atualiza o pedido para "em_andamento"
+    if (draftEntries.length > 0 && os.pedido_id) {
+      const { error: pedidoError } = await supabase
+        .from('pedidos')
+        .update({ status: 'em_andamento' })
+        .eq('id', os.pedido_id)
+        .neq('status', 'em_andamento'); // evita update desnecessário
+
+      if (pedidoError) throw pedidoError;
+    }
+
+    toast({
+      title: 'Rascunho salvo!',
+      description: `Salvamos ${draftEntries.length} item(ns). Total na OS: ${count ?? 0}. ${novoStatus ? `Status: ${novoStatus}.` : ''}`
+    });
+
+  } catch (error) {
+    console.error('Erro ao salvar rascunho:', error);
+    toast({
+      title: 'Erro ao salvar rascunho',
+      description: error?.message ?? 'Não foi possível salvar o rascunho. Tente novamente.',
+      variant: 'destructive'
+    });
+  }
+};
+
+
+  /*
   const handleSaveDraft = async () => {
     try {
       const resolvedCompanyId = await resolveCompanyId();
@@ -316,9 +429,19 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
       });
     }
   };
+  */
 
   const handleSubmitChecklist = async () => {
     const resolvedCompanyId = await resolveCompanyId();
+
+    if (!resolvedCompanyId) {
+      toast({
+        title: 'Erro interno',
+        description: 'Não foi possível identificar a empresa. Faça logout e entre novamente.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     const requiredItems = checklistItems.flatMap((category) =>
       category.items.filter((item) => item.required)
@@ -408,36 +531,42 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
 
    if (updateError) throw updateError;
 
+   const pedidoId = os.pedido_id ?? os.pedidos?.id;
+
    if (novoStatus === 'concluido') {
      const { error: validacaoError } = await supabase
        .from('validacoes')
        .insert({
          os_id: os.id,
          status: 'pendente',
-         created_at: new Date().toISOString()
+         xid_empresa: resolvedCompanyId,
+         created_at: new Date().toISOString(),
        });
 
      if (validacaoError) throw validacaoError;
 
+     if (!pedidoId) {
+       throw new Error('Pedido associado à OS não está disponível.');
+     }
+
      const { error: pedidoError } = await supabase
        .from('pedidos')
        .update(updatePayload.status === 'concluido' ? { status: 'concluido' } : { status: 'em_andamento' })
-       .eq('id', os.pedido_id);
+       .eq('id', pedidoId);
 
      if (pedidoError) throw pedidoError;
    }
 
    // ✅ Se for "não conforme" → pedido fica em andamento
       if (novoStatus === 'nao_conforme') {
-        /* const { error: pedidoError } = await supabase
-          .from('pedidos')
-          .update({ status: 'em_andamento' })
-          .eq('id', os.pedido_id); */
+        if (!pedidoId) {
+          throw new Error('Pedido associado à OS não está disponível.');
+        }
 
         const { error: pedidoError } = await supabase
           .from('pedidos')
           .update(updatePayload.status === 'concluido' ? { status: 'concluido' } : { status: 'em_andamento' })
-          .eq('id', os.pedido_id);
+          .eq('id', pedidoId);
 
         if (pedidoError) throw pedidoError;
       }

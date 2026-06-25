@@ -5,6 +5,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, User, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 
 // Tooltip via Radix (sem depender do shadcn)
@@ -61,9 +62,30 @@ const buildQuery = (searchTerm, filterStatus) => {
 };
 
 const ValidationList = ({ searchTerm, filterStatus, onSelectValidation, onSelectNewValidador }) => {
+  const { user } = useAuth();
   const [validations, setValidations] = useState([]);
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState(null);
+
+  const resolveCompanyId = async () => {
+    const fromUser = user?.user_metadata?.xid_empresa ?? user?.xid_empresa ?? null;
+
+    if (fromUser) return fromUser;
+    if (!user?.id) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('xid_empresa')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Não foi possível resolver xid_empresa do perfil do usuário.', error);
+      return null;
+    }
+
+    return data?.xid_empresa ?? null;
+  };
 
   const applyQuery = useMemo(
     () => buildQuery(searchTerm, filterStatus),
@@ -75,11 +97,19 @@ const ValidationList = ({ searchTerm, filterStatus, onSelectValidation, onSelect
       setLoading(true);
       setErr(null);
 
+      const resolvedCompanyId = await resolveCompanyId();
+      if (!resolvedCompanyId) {
+        setValidations([]);
+        setLoading(false);
+        return;
+      }
+
       let query = supabase
         .from('validacoes')
         .select(`
           id,
           os_id,
+          xid_empresa,
           ordem_servico:os_id (
             id,
             numero,
@@ -93,7 +123,8 @@ const ValidationList = ({ searchTerm, filterStatus, onSelectValidation, onSelect
           resultado,
           status,
           parecer
-        `);
+        `)
+        .eq('xid_empresa', resolvedCompanyId);
 
       query = applyQuery(query);
       const { data, error } = await query;
