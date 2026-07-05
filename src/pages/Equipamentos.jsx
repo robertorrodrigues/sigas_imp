@@ -61,6 +61,7 @@ const Equipamentos = () => {
     setLoading(true);
 
     const resolvedCompanyId = await resolveCompanyId();
+    
     let query = supabase
       .from('equipamentos')
       .select('*')

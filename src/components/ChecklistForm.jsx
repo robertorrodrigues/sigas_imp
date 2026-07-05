@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Camera, Save, Send, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, Camera, Save, Send, ChevronLeft, ChevronRight, Pencil, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
@@ -18,6 +18,45 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
   const [observations, setObservations] = useState({});
   const [clienteNome, setClienteNome] = useState('');
   const [loading, setLoading] = useState(false);
+  const [showDadosGerais, setShowDadosGerais] = useState(false);
+  const [showAparelhos, setShowAparelhos] = useState(false);
+  const [loadingDadosGerais, setLoadingDadosGerais] = useState(false);
+  const [loadingAparelhos, setLoadingAparelhos] = useState(false);
+  const [savingDadosGerais, setSavingDadosGerais] = useState(false);
+  const [savingAparelho, setSavingAparelho] = useState(false);
+  const [dadosGeraisData, setDadosGeraisData] = useState({
+    abastecimento: '',
+    material_inst_interna: '',
+    tipo_inst_interna: '',
+    numero_medidor: '',
+    tipo_medidor: '',
+    marca_medidor: '',
+    leitura_medidor: '',
+    pi_estanqueidade: '',
+    pf_estanqueidade: '',
+    tempo_estanqueidade: '',
+    diametro_estanqueidade: '',
+    pi_abaco: '',
+    pf_abaco: '',
+    volume_abaco: '',
+    resultado_abaco: '',
+  });
+  const blankAparelhoForm = {
+    local: '',
+    tipo: '',
+    marca: '',
+    modelo: '',
+    queimadores: '',
+    circuito: '',
+    exaustao: '',
+    pot_nominal: '',
+    co_amb: '',
+    tempo: '',
+    co_n: '',
+  };
+  const [aparelhoForm, setAparelhoForm] = useState(blankAparelhoForm);
+  const [aparelhosList, setAparelhosList] = useState([]);
+  const [editingAparelhoId, setEditingAparelhoId] = useState(null);
 
   
 // TIMESTAMP local (para coluna TIMESTAMP sem timezone)
@@ -185,6 +224,95 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
     carregarChecklistSeEmProgresso();
     return () => { cancelado = true; };
   }, [os?.id, os?.status]);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    const carregarAparelhos = async () => {
+      if (!showAparelhos || !os?.numero) {
+        if (!cancelado) setAparelhosList([]);
+        return;
+      }
+
+      try {
+        setLoadingAparelhos(true);
+        const { data, error } = await supabase
+          .from('aparelhos_insp')
+          .select('*')
+          .eq('num_os', os.numero)
+          .order('created_at', { ascending: true });
+
+        if (error) throw error;
+
+        if (!cancelado) setAparelhosList(data ?? []);
+      } catch (err) {
+        if (!cancelado) {
+          toast({
+            title: 'Erro ao carregar aparelhos',
+            description: err?.message ?? 'Não foi possível recuperar os aparelhos cadastrados.',
+            variant: 'destructive',
+          });
+        }
+      } finally {
+        if (!cancelado) setLoadingAparelhos(false);
+      }
+    };
+
+    carregarAparelhos();
+    return () => { cancelado = true; };
+  }, [os?.numero, showAparelhos]);
+
+  useEffect(() => {
+    let cancelado = false;
+
+    const carregarDadosGerais = async () => {
+      if (!showDadosGerais || !os?.numero) return;
+
+      try {
+        setLoadingDadosGerais(true);
+        const { data, error } = await supabase
+          .from('insp_dados_gerais')
+          .select('*')
+          .eq('num_os', os.numero)
+          .maybeSingle();
+
+        if (error) throw error;
+
+        if (!cancelado && data) {
+          setDadosGeraisData({
+            abastecimento: data.abastecimento ?? '',
+            material_inst_interna: data.material_inst_interna ?? '',
+            tipo_inst_interna: data.tipo_inst_interna ?? '',
+            numero_medidor: data.numero_medidor ?? '',
+            tipo_medidor: data.tipo_medidor ?? '',
+            marca_medidor: data.marca_medidor ?? '',
+            leitura_medidor: data.leitura_medidor ?? '',
+            pi_estanqueidade: data.pi_estanqueidade ?? '',
+            pf_estanqueidade: data.pf_estanqueidade ?? '',
+            tempo_estanqueidade: data.tempo_estanqueidade ?? '',
+            diametro_estanqueidade: data.diametro_estanqueidade ?? '',
+            pi_abaco: data.pi_abaco ?? '',
+            pf_abaco: data.pf_abaco ?? '',
+            volume_abaco: data.volume_abaco ?? '',
+            resultado_abaco: data.resultado_abaco ?? '',
+          });
+        }
+      } catch (err) {
+        if (!cancelado) {
+          toast({
+            title: 'Erro ao carregar dados gerais',
+            description: err?.message ?? 'Não foi possível recuperar os dados da inspeção.',
+            variant: 'destructive',
+          });
+        }
+      } finally {
+        if (!cancelado) setLoadingDadosGerais(false);
+      }
+    };
+
+    carregarDadosGerais();
+    return () => { cancelado = true; };
+  }, [os?.numero, showDadosGerais]);
 
   const handleItemChange = (itemId, value) => {
     setChecklistData((prev) => ({ ...prev, [itemId]: value }));
@@ -626,6 +754,647 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
     });
   };
 
+  const handleDadosGeraisChange = (field, value) => {
+    setDadosGeraisData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleAparelhoFormChange = (field, value) => {
+    setAparelhoForm((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const isAparelhoFormValid = () => {
+    const requiredFields = ['local', 'tipo', 'marca', 'modelo', 'queimadores'];
+    return requiredFields.every((field) => String(aparelhoForm[field] ?? '').trim() !== '');
+  };
+
+  const resetAparelhoForm = () => {
+    setEditingAparelhoId(null);
+    setAparelhoForm({ ...blankAparelhoForm });
+  };
+
+  const handleStartEditAparelho = (aparelho) => {
+    setEditingAparelhoId(aparelho.id);
+    setAparelhoForm({
+      local: aparelho.local ?? '',
+      tipo: aparelho.tipo ?? '',
+      marca: aparelho.marca ?? '',
+      modelo: aparelho.modelo ?? '',
+      queimadores: aparelho.queimadores ?? '',
+      circuito: aparelho.circuito ?? '',
+      exaustao: aparelho.exaustao ?? '',
+      pot_nominal: aparelho.pot_nominal ?? '',
+      co_amb: aparelho.co_amb ?? '',
+      tempo: aparelho.tempo ?? '',
+      co_n: aparelho.co_n ?? '',
+    });
+  };
+
+  const handleDeleteAparelho = async (aparelhoId) => {
+    if (!aparelhoId) return;
+
+    try {
+      const { error } = await supabase
+        .from('aparelhos_insp')
+        .delete()
+        .eq('id', aparelhoId);
+
+      if (error) throw error;
+
+      setAparelhosList((prev) => prev.filter((item) => item.id !== aparelhoId));
+      if (editingAparelhoId === aparelhoId) {
+        resetAparelhoForm();
+      }
+
+      toast({
+        title: 'Aparelho excluído',
+        description: 'O aparelho foi removido com sucesso.',
+      });
+    } catch (error) {
+      console.error('Erro ao excluir aparelho:', error);
+      toast({
+        title: 'Erro ao excluir aparelho',
+        description: error?.message ?? 'Não foi possível excluir o aparelho.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleSaveAparelho = async () => {
+    if (!os?.numero) {
+      toast({
+        title: 'OS não identificada',
+        description: 'Não foi possível salvar o aparelho sem o número da OS.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!isAparelhoFormValid()) {
+      toast({
+        title: 'Campos obrigatórios',
+        description: 'Preencha Local, Tipo, Marca, Modelo e Queimadores para gravar o aparelho.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setSavingAparelho(true);
+
+      const payload = {
+        num_os: os.numero,
+        local: aparelhoForm.local || null,
+        tipo: aparelhoForm.tipo || null,
+        marca: aparelhoForm.marca || null,
+        modelo: aparelhoForm.modelo || null,
+        queimadores: aparelhoForm.queimadores || null,
+        circuito: aparelhoForm.circuito || null,
+        exaustao: aparelhoForm.exaustao || null,
+        pot_nominal: aparelhoForm.pot_nominal || null,
+        co_amb: aparelhoForm.co_amb || null,
+        tempo: aparelhoForm.tempo || null,
+        co_n: aparelhoForm.co_n || null,
+      };
+
+      if (editingAparelhoId) {
+        const { error } = await supabase
+          .from('aparelhos_insp')
+          .update(payload)
+          .eq('id', editingAparelhoId);
+
+        if (error) throw error;
+
+        setAparelhosList((prev) => prev.map((item) => (item.id === editingAparelhoId ? { ...item, ...payload } : item)));
+        toast({
+          title: 'Aparelho atualizado',
+          description: 'As informações do aparelho foram atualizadas.',
+        });
+      } else {
+        const { data, error } = await supabase.from('aparelhos_insp').insert(payload).select().single();
+
+        if (error) throw error;
+
+        setAparelhosList((prev) => [
+          ...prev,
+          {
+            ...payload,
+            id: data?.id ?? crypto.randomUUID(),
+            created_at: data?.created_at ?? new Date().toISOString(),
+          },
+        ]);
+        toast({
+          title: 'Aparelho cadastrado',
+          description: 'O aparelho foi salvo na tabela de aparelhos da inspeção.',
+        });
+      }
+
+      resetAparelhoForm();
+    } catch (error) {
+      console.error('Erro ao salvar aparelho:', error);
+      toast({
+        title: 'Erro ao salvar aparelho',
+        description: error?.message ?? 'Não foi possível salvar as informações do aparelho.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingAparelho(false);
+    }
+  };
+
+  const handleSaveDadosGerais = async () => {
+    if (!os?.numero) {
+      toast({
+        title: 'OS não identificada',
+        description: 'Não foi possível salvar os dados gerais sem o número da OS.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      setSavingDadosGerais(true);
+
+      const { data: existingRow, error: selectError } = await supabase
+        .from('insp_dados_gerais')
+        .select('id')
+        .eq('num_os', os.numero)
+        .maybeSingle();
+
+      if (selectError) throw selectError;
+
+      const payload = {
+        num_os: os.numero,
+        abastecimento: dadosGeraisData.abastecimento || null,
+        material_inst_interna: dadosGeraisData.material_inst_interna || null,
+        tipo_inst_interna: dadosGeraisData.tipo_inst_interna || null,
+        numero_medidor: dadosGeraisData.numero_medidor || null,
+        tipo_medidor: dadosGeraisData.tipo_medidor || null,
+        marca_medidor: dadosGeraisData.marca_medidor || null,
+        leitura_medidor: dadosGeraisData.leitura_medidor || null,
+        pi_estanqueidade: dadosGeraisData.pi_estanqueidade || null,
+        pf_estanqueidade: dadosGeraisData.pf_estanqueidade || null,
+        tempo_estanqueidade: dadosGeraisData.tempo_estanqueidade || null,
+        diametro_estanqueidade: dadosGeraisData.diametro_estanqueidade || null,
+        pi_abaco: dadosGeraisData.pi_abaco || null,
+        pf_abaco: dadosGeraisData.pf_abaco || null,
+        volume_abaco: dadosGeraisData.volume_abaco || null,
+        resultado_abaco: dadosGeraisData.resultado_abaco || null,
+      };
+
+      if (existingRow?.id) {
+        const { error: updateError } = await supabase
+          .from('insp_dados_gerais')
+          .update(payload)
+          .eq('id', existingRow.id);
+
+        if (updateError) throw updateError;
+      } else {
+        const { error: insertError } = await supabase
+          .from('insp_dados_gerais')
+          .insert(payload);
+
+        if (insertError) throw insertError;
+      }
+
+      toast({
+        title: 'Dados gerais salvos',
+        description: 'As informações da inspeção foram salvas na tabela de dados gerais.',
+      });
+      setShowDadosGerais(false);
+    } catch (error) {
+      console.error('Erro ao salvar dados gerais:', error);
+      toast({
+        title: 'Erro ao salvar dados gerais',
+        description: error?.message ?? 'Não foi possível salvar as informações.',
+        variant: 'destructive',
+      });
+    } finally {
+      setSavingDadosGerais(false);
+    }
+  };
+
+  if (showAparelhos) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-900 sm:bg-black/50 sm:backdrop-blur-sm">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-slate-900 sm:bg-white/10 sm:backdrop-blur-xl rounded-none sm:rounded-2xl p-4 sm:p-6 border-0 sm:border sm:border-white/20 w-full h-full sm:w-full sm:max-w-5xl sm:max-h-[90vh] flex flex-col"
+        >
+          <div className="flex items-center justify-between mb-4 shrink-0">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white">Aparelhos da Inspeção</h2>
+              <p className="text-gray-300 text-sm">{os.numero} — Cadastro de aparelhos e dados de utilização</p>
+            </div>
+            <button onClick={() => setShowAparelhos(false)} className="text-gray-400 hover:text-white transition-colors">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="bg-white/5 rounded-xl p-4 sm:p-6 mb-4 overflow-y-auto flex-1">
+            <div className="mb-6">
+              <h3 className="text-lg font-semibold text-white mb-3">Aparelhos já cadastrados</h3>
+              {loadingAparelhos ? (
+                <p className="text-gray-300">Carregando aparelhos salvos...</p>
+              ) : aparelhosList.length === 0 ? (
+                <p className="text-gray-400">Ainda não há aparelhos cadastrados para esta OS.</p>
+              ) : (
+                <div className="space-y-2">
+                  {aparelhosList.map((item, index) => (
+                    <div key={item.id ?? `${item.num_os}-${index}`} className="rounded-lg border border-white/10 bg-slate-950/40 p-3">
+                      <div className="flex flex-wrap items-center justify-between gap-2 mb-2">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="text-blue-300 font-medium">Aparelho {index + 1}</span>
+                          <span className="text-gray-400 text-sm">{item.local || 'Sem local'}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button
+                            onClick={() => handleStartEditAparelho(item)}
+                            variant="outline"
+                            size="sm"
+                            className="border-white/20 text-white hover:bg-white/10"
+                          >
+                            <Pencil className="w-4 h-4 mr-1" />
+                            Alterar
+                          </Button>
+                          <Button
+                            onClick={() => handleDeleteAparelho(item.id)}
+                            variant="outline"
+                            size="sm"
+                            className="border-red-400/30 text-red-200 hover:bg-red-500/10"
+                          >
+                            <Trash2 className="w-4 h-4 mr-1" />
+                            Excluir
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-200">
+                        <div><span className="text-gray-400">Tipo:</span> {item.tipo || '—'}</div>
+                        <div><span className="text-gray-400">Marca:</span> {item.marca || '—'}</div>
+                        <div><span className="text-gray-400">Modelo:</span> {item.modelo || '—'}</div>
+                        <div><span className="text-gray-400">Queimadores:</span> {item.queimadores || '—'}</div>
+                        <div><span className="text-gray-400">Circuito:</span> {item.circuito || '—'}</div>
+                        <div><span className="text-gray-400">Exaustão:</span> {item.exaustao || '—'}</div>
+                        <div><span className="text-gray-400">Potência nominal:</span> {item.pot_nominal || '—'}</div>
+                        <div><span className="text-gray-400">CO amb:</span> {item.co_amb || '—'}</div>
+                        <div><span className="text-gray-400">Tempo:</span> {item.tempo || '—'}</div>
+                        <div><span className="text-gray-400">CO n:</span> {item.co_n || '—'}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-white/10 p-4">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-semibold text-white">{editingAparelhoId ? 'Editar aparelho' : 'Novo aparelho'}</h3>
+                {editingAparelhoId && (
+                  <Button
+                    onClick={resetAparelhoForm}
+                    variant="outline"
+                    size="sm"
+                    className="border-white/20 text-white hover:bg-white/10"
+                  >
+                    Cancelar edição
+                  </Button>
+                )}
+              </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">Local</label>
+                  <input
+                    value={aparelhoForm.local}
+                    onChange={(e) => handleAparelhoFormChange('local', e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ex.: Cozinha"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">Tipo</label>
+                  <input
+                    value={aparelhoForm.tipo}
+                    onChange={(e) => handleAparelhoFormChange('tipo', e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Ex.: Fogão"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">Marca</label>
+                  <input
+                    value={aparelhoForm.marca}
+                    onChange={(e) => handleAparelhoFormChange('marca', e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">Modelo</label>
+                  <input
+                    value={aparelhoForm.modelo}
+                    onChange={(e) => handleAparelhoFormChange('modelo', e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">Queimadores</label>
+                  <input
+                    value={aparelhoForm.queimadores}
+                    onChange={(e) => handleAparelhoFormChange('queimadores', e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">Circuito</label>
+                  <select
+                    value={aparelhoForm.circuito}
+                    onChange={(e) => handleAparelhoFormChange('circuito', e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="" className="text-slate-900">Selecione</option>
+                    <option value="Aberto" className="text-slate-900">Aberto</option>
+                    <option value="Fechado" className="text-slate-900">Fechado</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">Exaustão</label>
+                  <select
+                    value={aparelhoForm.exaustao}
+                    onChange={(e) => handleAparelhoFormChange('exaustao', e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="" className="text-slate-900">Selecione</option>
+                    <option value="Natural" className="text-slate-900">Natural</option>
+                    <option value="Forçada" className="text-slate-900">Forçada</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">Potência Nominal</label>
+                  <input
+                    value={aparelhoForm.pot_nominal}
+                    onChange={(e) => handleAparelhoFormChange('pot_nominal', e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">CO amb</label>
+                  <input
+                    value={aparelhoForm.co_amb}
+                    onChange={(e) => handleAparelhoFormChange('co_amb', e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">Tempo</label>
+                  <input
+                    value={aparelhoForm.tempo}
+                    onChange={(e) => handleAparelhoFormChange('tempo', e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">CO n</label>
+                  <input
+                    value={aparelhoForm.co_n}
+                    onChange={(e) => handleAparelhoFormChange('co_n', e.target.value)}
+                    className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-between items-center shrink-0">
+            <Button
+              onClick={() => setShowAparelhos(false)}
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Voltar ao checklist
+            </Button>
+            <Button
+              onClick={handleSaveAparelho}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+              disabled={savingAparelho}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {savingAparelho ? 'Salvando...' : editingAparelhoId ? 'Atualizar Aparelho' : 'Salvar Aparelho'}
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (showDadosGerais) {
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-900 sm:bg-black/50 sm:backdrop-blur-sm">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95 }}
+          animate={{ opacity: 1, scale: 1 }}
+          exit={{ opacity: 0, scale: 0.95 }}
+          className="bg-slate-900 sm:bg-white/10 sm:backdrop-blur-xl rounded-none sm:rounded-2xl p-4 sm:p-6 border-0 sm:border sm:border-white/20 w-full h-full sm:w-full sm:max-w-4xl sm:max-h-[90vh] flex flex-col"
+        >
+          <div className="flex items-center justify-between mb-4 shrink-0">
+            <div>
+              <h2 className="text-xl sm:text-2xl font-bold text-white">Dados Gerais da Inspeção</h2>
+              <p className="text-gray-300 text-sm">{os.numero} — Cadastro das informações gerais da inspeção</p>
+            </div>
+            <button onClick={() => setShowDadosGerais(false)} className="text-gray-400 hover:text-white transition-colors">
+              <X className="w-6 h-6" />
+            </button>
+          </div>
+
+          <div className="bg-white/5 rounded-xl p-4 sm:p-6 mb-4 overflow-y-auto flex-1">
+            {loadingDadosGerais ? (
+              <p className="text-gray-300">Carregando dados salvos...</p>
+            ) : (
+              <div className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-200 mb-2">Abastecimento</label>
+                    <select
+                      value={dadosGeraisData.abastecimento}
+                      onChange={(e) => handleDadosGeraisChange('abastecimento', e.target.value)}
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="" className="text-slate-900">Selecione</option>
+                      <option value="GLP" className="text-slate-900">GLP</option>
+                      <option value="Gás Natural" className="text-slate-900">Gás Natural</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-200 mb-2">Instalação Interna Material</label>
+                    <select
+                      value={dadosGeraisData.material_inst_interna}
+                      onChange={(e) => handleDadosGeraisChange('material_inst_interna', e.target.value)}
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="" className="text-slate-900">Selecione</option>
+                      <option value="Aço" className="text-slate-900">Aço</option>
+                      <option value="Cobre" className="text-slate-900">Cobre</option>
+                      <option value="PE" className="text-slate-900">PE</option>
+                      <option value="PEX" className="text-slate-900">PEX</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-200 mb-2">Instalação Interna Tipo</label>
+                    <select
+                      value={dadosGeraisData.tipo_inst_interna}
+                      onChange={(e) => handleDadosGeraisChange('tipo_inst_interna', e.target.value)}
+                      className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="" className="text-slate-900">Selecione</option>
+                      <option value="Aparente" className="text-slate-900">Aparente</option>
+                      <option value="Embutido" className="text-slate-900">Embutido</option>
+                      <option value="Enterrado" className="text-slate-900">Enterrado</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-white/10 p-4">
+                  <h3 className="text-lg font-semibold text-white mb-4">Dados do Medidor</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Número</label>
+                      <input
+                        value={dadosGeraisData.numero_medidor}
+                        onChange={(e) => handleDadosGeraisChange('numero_medidor', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Tipo</label>
+                      <input
+                        value={dadosGeraisData.tipo_medidor}
+                        onChange={(e) => handleDadosGeraisChange('tipo_medidor', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Marca</label>
+                      <input
+                        value={dadosGeraisData.marca_medidor}
+                        onChange={(e) => handleDadosGeraisChange('marca_medidor', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Leitura</label>
+                      <input
+                        value={dadosGeraisData.leitura_medidor}
+                        onChange={(e) => handleDadosGeraisChange('leitura_medidor', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-white/10 p-4">
+                  <h3 className="text-lg font-semibold text-white mb-4">Teste de Estanqueidade</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Pressão Inicial</label>
+                      <input
+                        value={dadosGeraisData.pi_estanqueidade}
+                        onChange={(e) => handleDadosGeraisChange('pi_estanqueidade', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Pressão Final</label>
+                      <input
+                        value={dadosGeraisData.pf_estanqueidade}
+                        onChange={(e) => handleDadosGeraisChange('pf_estanqueidade', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Tempo de Teste</label>
+                      <input
+                        value={dadosGeraisData.tempo_estanqueidade}
+                        onChange={(e) => handleDadosGeraisChange('tempo_estanqueidade', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Diâmetro da Rede</label>
+                      <input
+                        value={dadosGeraisData.diametro_estanqueidade}
+                        onChange={(e) => handleDadosGeraisChange('diametro_estanqueidade', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-white/10 p-4">
+                  <h3 className="text-lg font-semibold text-white mb-4">Teste pelo Método do Ábaco</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Pressão Inicial</label>
+                      <input
+                        value={dadosGeraisData.pi_abaco}
+                        onChange={(e) => handleDadosGeraisChange('pi_abaco', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Pressão Final</label>
+                      <input
+                        value={dadosGeraisData.pf_abaco}
+                        onChange={(e) => handleDadosGeraisChange('pf_abaco', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Volume Rede Interna</label>
+                      <input
+                        value={dadosGeraisData.volume_abaco}
+                        onChange={(e) => handleDadosGeraisChange('volume_abaco', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-200 mb-2">Resultado (L/H)</label>
+                      <input
+                        value={dadosGeraisData.resultado_abaco}
+                        onChange={(e) => handleDadosGeraisChange('resultado_abaco', e.target.value)}
+                        className="w-full px-3 py-2 bg-white/10 border border-white/20 rounded-lg text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-between items-center shrink-0">
+            <Button
+              onClick={() => setShowDadosGerais(false)}
+              variant="outline"
+              className="border-white/20 text-white hover:bg-white/10"
+            >
+              <ChevronLeft className="w-4 h-4 mr-2" />
+              Voltar ao checklist
+            </Button>
+            <Button
+              onClick={handleSaveDadosGerais}
+              className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+              disabled={savingDadosGerais}
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {savingDadosGerais ? 'Salvando...' : 'Salvar Dados'}
+            </Button>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-slate-900 sm:bg-black/50 sm:backdrop-blur-sm">
       <motion.div
@@ -688,14 +1457,34 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
               </div>
             </div>
 
-            <Button
-              onClick={applyCurrentCategoryConforme}
-              variant="outline"
-              size="sm"
-              className="shrink-0 border-green-400/40 bg-green-500/10 text-green-200 hover:bg-green-500/20"
-            >
-              Conforme
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button
+                onClick={() => setShowDadosGerais(true)}
+                variant="outline"
+                size="sm"
+                className="border-blue-400/40 bg-blue-500/10 text-blue-200 hover:bg-blue-500/20"
+              >
+                Dados
+              </Button>
+
+              <Button
+                onClick={() => setShowAparelhos(true)}
+                variant="outline"
+                size="sm"
+                className="border-cyan-400/40 bg-cyan-500/10 text-cyan-200 hover:bg-cyan-500/20"
+              >
+                Aparelhos
+              </Button>
+
+              <Button
+                onClick={applyCurrentCategoryConforme}
+                variant="outline"
+                size="sm"
+                className="border-green-400/40 bg-green-500/10 text-green-200 hover:bg-green-500/20"
+              >
+                Conforme
+              </Button>
+            </div>
           </div>
         </div>
 

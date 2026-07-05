@@ -7,27 +7,54 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
 import { supabase } from '@/lib/customSupabaseClient';
 
-const EquipamentoAlocacao = () => {
-  const { id } = useParams();
-  const navigate = useNavigate();
-  const { toast } = useToast();
-  const { user } = useAuth();
-  const [equipamento, setEquipamento] = useState(null);
-  const [tecnicos, setTecnicos] = useState([]);
-  const [currentAllocation, setCurrentAllocation] = useState(null);
-  const [formData, setFormData] = useState({ tecnico_id: '', data_retirada: '', data_devolucao: '' });
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const EquipamentoAlocacao = () => {
+    const { id } = useParams();
+    const navigate = useNavigate();
+    const { toast } = useToast();
+    const { user } = useAuth();
+    const [equipamento, setEquipamento] = useState(null);
+    const [tecnicos, setTecnicos] = useState([]);
+    const [currentAllocation, setCurrentAllocation] = useState(null);
+    const [formData, setFormData] = useState({ tecnico_id: '', data_retirada: '', data_devolucao: '' });
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
 
-  const statusLabel = {
-    disponivel: 'Disponível',
-    em_uso: 'Em uso',
-    indisponivel: 'Indisponível',
+    const statusLabel = {
+      disponivel: 'Disponível',
+      em_uso: 'Em uso',
+      indisponivel: 'Indisponível',
+    };
+
+    const resolveCompanyId = async () => {
+    const fromUser =
+      user?.user_metadata?.xid_empresa ??
+      user?.xid_empresa ??
+      null;
+
+    if (fromUser) return fromUser;
+
+    if (!user?.id) return null;
+
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('xid_empresa')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Erro ao resolver empresa', error);
+      return null;
+    }
+
+    return data?.xid_empresa ?? null;
   };
+
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
+
+      const resolvedCompanyId = await resolveCompanyId();
 
       const { data: equipamentoData, error: equipamentoError } = await supabase
         .from('equipamentos')
@@ -45,6 +72,7 @@ const EquipamentoAlocacao = () => {
         .from('tecnico')
         .select('id, nome')
         .eq('status', 'ativo')
+        .eq('xid_empresa', resolvedCompanyId)
         .order('nome', { ascending: true });
 
       if (tecnicoError) {
@@ -58,6 +86,7 @@ const EquipamentoAlocacao = () => {
           .select('*')
           .eq('xid_equipamento', id)
           .eq('status', 'em_uso')
+          .eq('xid_empresa', resolvedCompanyId)
           .order('created_at', { ascending: false })
           .limit(1)
           .single();
@@ -92,6 +121,8 @@ const EquipamentoAlocacao = () => {
       return;
     }
 
+    const resolvedCompanyId = await resolveCompanyId();    
+
     setSaving(true);
 
     const allocationPayload = {
@@ -123,6 +154,7 @@ const EquipamentoAlocacao = () => {
       .insert([{
         ...allocationPayload,
         xid_equipamento: id,
+        xid_empresa: resolvedCompanyId,
         status: 'em_uso',
       }]);
 
