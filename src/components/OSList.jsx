@@ -73,6 +73,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
           .select(`
             id,
             pedido_id,
+            tecnico_id,
             xid_empresa,
             numero,
             status,
@@ -151,27 +152,130 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
     return matchesSearch && matchesStatus;
   });
 
-  const handleDownloadReport = async (ordem) => {
+  const handleDownloadReport  = async (ordem) => {
     try {
       setSaving(true);
       setLoadingChecklist(true);
       // Buscar checklist do Supabase filtrando pela OS
       const { data: checklistData, error: checklistError } = await supabase
         .from('checklist')
-        .select('item_id, descricao, resultado, observacao, foto_url')
+        .select('item_id, descricao, resultado, observacao, foto_url, created_at')
         .eq('os_id', ordem.id)
         .order('item_id', { ascending: true });
       if (checklistError) throw checklistError;
 
-      const header = {
-        numeroOS: ordem?.numero ?? ordem?.id ?? '—',
-        nomeCliente: ordem?.pedidos?.cliente_nome ?? '—',
-        numeroPedido: ordem?.pedidos?.numero ?? '—',
-        nomeTecnico: ordem?.tecnico?.nome ?? '—',
-        dataConclusao: ordem?.data_conclusao ?? null,
+      let checklistStartTime = null;
+      (checklistData || []).forEach((row) => {
+        if (!row?.created_at) return;
+        const rowDate = new Date(row.created_at);
+        if (Number.isNaN(rowDate.getTime())) return;
+        if (!checklistStartTime || rowDate < checklistStartTime) {
+          checklistStartTime = rowDate;
+        }
+      });
+
+      const { data: inspDadosGerais, error: inspDadosGeraisError } = await supabase
+        .from('insp_dados_gerais')
+        .select('*')
+        .eq('num_os', ordem.numero)
+        .maybeSingle();
+      if (inspDadosGeraisError) throw inspDadosGeraisError;
+
+      const { data: aparelhosInspData, error: aparelhosError } = await supabase
+        .from('aparelhos_insp')
+        .select('id, local, tipo, marca, modelo, queimadores, circuito, exaustao, pot_nominal, co_amb, tempo, co_n')
+        .eq('num_os', ordem.numero)
+        .order('id', { ascending: true });
+      if (aparelhosError) throw aparelhosError;
+
+      let equipamentoPatrimonios = [];
+      if (ordem?.tecnico_id) {
+        const { data: alocacoesData, error: alocacoesError } = await supabase
+          .from('alocacoes')
+          .select('xid_equipamento')
+          .eq('xid_tecnico', ordem.tecnico_id)
+          .eq('status', 'em_uso');
+        if (alocacoesError) throw alocacoesError;
+
+        const equipamentoIds = (alocacoesData || [])
+          .map((item) => item?.xid_equipamento)
+          .filter(Boolean);
+
+        if (equipamentoIds.length) {
+          const { data: equipamentosData, error: equipamentosError } = await supabase
+            .from('equipamentos')
+            .select('id, patrimonio, nome')
+            .in('id', equipamentoIds);
+          if (equipamentosError) throw equipamentosError;
+          equipamentoPatrimonios = equipamentosData || [];
+        }
+      }
+
+      const findInstrumentPatrimonio = (matcher) => {
+        const found = equipamentoPatrimonios.find((item) => {
+          const target = `${item?.nome ?? ''} ${item?.patrimonio ?? ''}`;
+          return matcher(target);
+        });
+        return found?.patrimonio ?? '—';
       };
 
-      const logoUrl = '/images/logoSigas.png';
+      const rastreabilidade = {
+        manometro: findInstrumentPatrimonio((text) => /manometro|manômetro/i.test(text)),
+        analisGases: findInstrumentPatrimonio((text) => /(analis|análise|gases|gas)/i.test(text)),
+        cronometro: findInstrumentPatrimonio((text) => /cronometro|cronômetro/i.test(text)),
+        trena: findInstrumentPatrimonio((text) => /trena/i.test(text)),
+        paquimetro: findInstrumentPatrimonio((text) => /paquimetro|paquímetro/i.test(text)),
+      };
+
+      const header = {
+        numeroOS: ordem?.numero ?? ordem?.id ?? '—',
+        numeroPedido: ordem?.pedidos?.numero ?? '—',
+        nomeCliente: ordem?.pedidos?.cliente_nome ?? '—',
+        enderecoCompleto: [
+          ordem?.pedidos?.endereco,
+          ordem?.pedidos?.cidade,
+          ordem?.pedidos?.estado,
+          ordem?.pedidos?.cep ? `CEP: ${ordem.pedidos.cep}` : null,
+        ].filter(Boolean).join(' - '),
+        telefone: ordem?.pedidos?.telefone ?? '—',
+        nomeTecnico: ordem?.tecnico?.nome ?? '—',
+        dataConclusao: ordem?.data_conclusao ?? null,
+        inicioChecklist: checklistStartTime,
+        rastreabilidade,
+        abastecimento: inspDadosGerais?.abastecimento ?? '—',
+        materialInstInterna: inspDadosGerais?.material_inst_interna ?? '—',
+        tipoInstInterna: inspDadosGerais?.tipo_inst_interna ?? '—',
+        numeroMedidor: inspDadosGerais?.numero_medidor ?? '—',
+        tipoMedidor: inspDadosGerais?.tipo_medidor ?? '—',
+        marcaMedidor: inspDadosGerais?.marca_medidor ?? '—',
+        leituraMedidor: inspDadosGerais?.leitura_medidor ?? '—',
+        piEstanqueidade: inspDadosGerais?.pi_estanqueidade ?? '—',
+        pfEstanqueidade: inspDadosGerais?.pf_estanqueidade ?? '—',
+        tempoEstanqueidade: inspDadosGerais?.tempo_estanqueidade ?? '—',
+        diametroEstanqueidade: inspDadosGerais?.diametro_estanqueidade ?? '—',
+        piAbaco: inspDadosGerais?.pi_abaco ?? '—',
+        pfAbaco: inspDadosGerais?.pf_abaco ?? '—',
+        volumeAbaco: inspDadosGerais?.volume_abaco ?? '—',
+        resultadoAbaco: inspDadosGerais?.resultado_abaco ?? '—',
+        aparelhosInsp: aparelhosInspData ?? [],
+      };
+
+      //const logoUrl = '/images/gasmetro/logo.png';
+
+      // Buscar dados da EMPRESA (primeiro registro)
+      const { data: empresaRows, error: empresaError } = await supabase
+        .from('empresa')
+        .select('cnpj, nome, endereco, logo, assinatura, email, telefone, contato')
+        .limit(1);
+      if (empresaError) throw empresaError;
+      const empresa = (empresaRows && empresaRows[0]) ? empresaRows[0] : {};
+
+
+       const logoUrl = empresa?.logo
+      ? `/images/${empresa.logo}/logo.png`
+      : '/images/igas/logo.png';
+
+      
       const signaturesToInclude = {
         tecnico: signatures[`${ordem.id}-tecnico`] ?? null,
         cliente: signatures[`${ordem.id}-cliente`] ?? null,
@@ -236,7 +340,11 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
       };
 
       // Logo prioriza a da empresa (tabela empresa)
-      const logoUrl = empresa?.logo ?? '/images/logoSigas.png';
+      //const logoUrl = empresa?.logo ?? '/images/logoSigas.png';
+
+      const logoUrl = empresa?.logo
+      ? `/images/${empresa.logo}/logo.png`
+      : '/images/logoSigas.png';
 
       // Assinaturas: para CONTRATO, usar assinatura da Contratada (empresa) + assinatura do Cliente (capturada)
       const signaturesToInclude = {

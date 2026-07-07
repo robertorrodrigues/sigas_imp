@@ -85,8 +85,141 @@ export async function generateInspectionReport({ logoUrl, header, checklist, sig
   doc.setFont('Helvetica', 'normal');
   doc.text(formatDate(header?.dataConclusao), margin + 160, y);
 
+  y += 24;
+  const secondColumnX = margin + 280;
+  const fieldWidth = pageWidth - secondColumnX - margin;
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Número do Pedido:', secondColumnX, lineY + 20);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(String(header?.numeroPedido ?? '—'), secondColumnX + 120, lineY + 20);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Início do Checklist:', secondColumnX, lineY + 38);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(formatDate(header?.inicioChecklist), secondColumnX + 120, lineY + 38);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Abastecimento:', secondColumnX, lineY + 56);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(String(header?.abastecimento ?? '—'), secondColumnX + 120, lineY + 56);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Instalação Interna - Material:', secondColumnX, lineY + 74);
+  doc.setFont('Helvetica', 'normal');
+  doc.text(String(header?.materialInstInterna ?? '—'), secondColumnX + 120, lineY + 74);
+
+  y = lineY + 92;
+  y = ensureSpace(doc, y, 120, margin, bottomMargin);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('Rastreabilidade', margin, y);
+  y += 18;
+
+  const rastreabilidadeKeys = [
+    { label: 'Manômetro', value: header?.rastreabilidade?.manometro },
+    { label: 'Analis. Gases', value: header?.rastreabilidade?.analisGases },
+    { label: 'Cronômetro', value: header?.rastreabilidade?.cronometro },
+    { label: 'Trena', value: header?.rastreabilidade?.trena },
+    { label: 'Paquímetro', value: header?.rastreabilidade?.paquimetro },
+  ];
+  const rastWidth = (pageWidth - margin * 2) / rastreabilidadeKeys.length;
+  rastreabilidadeKeys.forEach((field, index) => {
+    const x = margin + index * rastWidth;
+    doc.setFont('Helvetica', 'bold');
+    doc.setFontSize(10);
+    doc.text(field.label, x, y);
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.text(String(field.value ?? '—'), x, y + 12);
+  });
+
+  y += 32;
+  y = ensureSpace(doc, y, 120, margin, bottomMargin);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('Dados do Medidor', margin, y);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(11);
+  y += 16;
+
+  const drawField = (label, value, xPos, yPos) => {
+    const labelText = `${label}: `;
+    doc.setFont('Helvetica', 'bold');
+    doc.text(labelText, xPos, yPos);
+    doc.setFont('Helvetica', 'normal');
+    const valueLines = doc.splitTextToSize(String(value ?? '—'), pageWidth - xPos - margin - labelText.length * 4);
+    doc.text(valueLines, xPos + 110, yPos);
+    return valueLines.length * 12;
+  };
+
+  const leftX = margin;
+  const rightX = margin + (pageWidth - margin * 2) / 2 + 10;
+  const leftYStart = y;
+  let leftY = leftYStart;
+  leftY += drawField('Número', header?.numeroMedidor, leftX, leftY, fieldWidth);
+  leftY += 14;
+  leftY += drawField('Tipo', header?.tipoMedidor, leftX, leftY, fieldWidth);
+  leftY += 14;
+  leftY += drawField('Marca', header?.marcaMedidor, leftX, leftY, fieldWidth);
+  leftY += 14;
+  leftY += drawField('Leitura', header?.leituraMedidor, leftX, leftY, fieldWidth);
+
+  let rightY = y;
+  doc.setFont('Helvetica', 'bold');
+  doc.text('Teste de Estanqueidade', rightX, rightY);
+  rightY += 16;
+  rightY += drawField('Pressão Inicial', header?.piEstanqueidade, rightX, rightY, fieldWidth);
+  rightY += 14;
+  rightY += drawField('Pressão Final', header?.pfEstanqueidade, rightX, rightY, fieldWidth);
+  rightY += 14;
+  rightY += drawField('Tempo de Teste', header?.tempoEstanqueidade, rightX, rightY, fieldWidth);
+  rightY += 14;
+  rightY += drawField('Diâmetro da Rede', header?.diametroEstanqueidade, rightX, rightY, fieldWidth);
+
+  y = Math.max(leftY, rightY) + 20;
+  y = ensureSpace(doc, y, 120, margin, bottomMargin);
+
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('Teste pelo Método do Ábaco', margin, y);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(11);
+  y += 16;
+  y += drawField('Pressão Inicial', header?.piAbaco, margin, y, fieldWidth);
+  y += 14;
+  y += drawField('Pressão Final', header?.pfAbaco, margin, y, fieldWidth);
+  y += 14;
+  y += drawField('Volume Rede Int.', header?.volumeAbaco, margin, y, fieldWidth);
+  y += 14;
+  y += drawField('Resultado (l/h)', header?.resultadoAbaco, margin, y, fieldWidth);
+
+  y += 18;
+  y = ensureSpace(doc, y, 120, margin, bottomMargin);
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('Aparelhos de Utilização', margin, y);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(11);
+  y += 16;
+
+  if (Array.isArray(header?.aparelhosInsp) && header.aparelhosInsp.length > 0) {
+    header.aparelhosInsp.forEach((item, index) => {
+      const text = `Aparelho ${index + 1}: Local: ${item.local ?? '—'}; Tipo: ${item.tipo ?? '—'}; Marca: ${item.marca ?? '—'}; Modelo: ${item.modelo ?? '—'}; Queimadores: ${item.queimadores ?? '—'}; Circuito: ${item.circuito ?? '—'}; Exaustão: ${item.exaustao ?? '—'}; Potência: ${item.pot_nominal ?? '—'}; CO amb: ${item.co_amb ?? '—'}; Tempo: ${item.tempo ?? '—'}; CO n: ${item.co_n ?? '—'}`;
+      const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
+      y = ensureSpace(doc, y, lines.length * 12 + 6, margin, bottomMargin);
+      doc.text(lines, margin, y);
+      y += lines.length * 12 + 8;
+    });
+  } else {
+    doc.text('Nenhum aparelho registrado.', margin, y);
+    y += 18;
+  }
+
   // ===== Título Checklist =====
-  y += 28;
+  y += 12;
   doc.setFont('Helvetica', 'bold'); doc.setFontSize(14);
   doc.text('Revisão do Checklist', margin, y);
 
