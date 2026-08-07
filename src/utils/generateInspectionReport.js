@@ -55,6 +55,9 @@ export async function generateInspectionReport({ logoUrl, header, checklist, sig
   doc.setFontSize(18);
   doc.text('Relatório de Inspeção', pageWidth / 2, y + 22, { align: 'center', baseline: 'middle' });
 
+//--------------------
+
+
   // linha separadora
   const lineY = y + 60;
   doc.setDrawColor(210);
@@ -196,16 +199,136 @@ export async function generateInspectionReport({ logoUrl, header, checklist, sig
   y += 14;
   y += drawField('Resultado (l/h)', header?.resultadoAbaco, margin, y, fieldWidth);
 
+  
+
+  y += 16;
+// ---- Quadro de dados gerais (4 colunas) ----
+  // L1: [OS][valor] [Data][valor]
+  // L2: [Nº Cliente][valor] [Nome Cliente][valor]
+  // L3: [CPF/CNPJ][valor] [Telefone][valor]
+  // L4: [Endereço Completo][valor (colSpan 3)]
+
+   // ---- Layout constants ----
+  const marginTop = 64; // topo
+  const marginX = 48;   // laterais
+  //const bottomMargin = 60;
+
+  
+  // Tamanhos de fonte (modelo)
+  const FONT_TITLE = 14;
+  const FONT_SUB = 9;
+  const FONT_CLAUSE_TITLE = 11;
+  const FONT_BODY = 9;
+
+  const boxX = marginX;
+  const boxW = pageWidth - marginX*2;
+  const colW = boxW / 4;
+  const rowH = 18;
+
+function fmtDate(d) {
+    try { return new Intl.DateTimeFormat('pt-BR').format(new Date(d ?? Date.now())); } catch { return '—'; }
+}
+
+function formatCpfCnpj(value) {
+    if (value == null) return '';
+    const digits = String(value).replace(/\D+/g, '');
+    if (digits.length === 14) {
+      return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})/, '$1.$2.$3/$4-$5');
+    }
+    if (digits.length === 11) {
+      return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+    }
+    return String(value);
+  }
+
+function onlyDigits(s) { return String(s || '').replace(/\D+/g, ''); }  
+
+function formatPhoneBR(v) {
+    const d = onlyDigits(v);
+    if (d.length === 11) { // (99) 99999.9999
+      return d.replace(/(\d{2})(\d{5})(\d{4})/, '($1) $2.$3');
+    }
+    if (d.length === 10) { // (99) 9999.9999
+      return d.replace(/(\d{2})(\d{4})(\d{4})/, '($1) $2.$3');
+    }
+    return v ?? '—';
+  }  
+
+function drawLabel(cx, cy, text) {
+  // fundo cinza-claro como antes
+  doc.setFillColor (245);
+  doc.rect(cx, cy, colW, rowH, 'F');
+
+  // 🔥 adiciona borda preta (antes só existia no drawValue)
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.6);
+  doc.rect(cx, cy, colW, rowH); // desenha borda
+
+  // texto
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(FONT_SUB);
+  doc.setTextColor(0);
+  doc.text(String(text), cx + 6, cy + 12);
+}
+
+function drawValue(cx, cy, value, spanCols = 1) {
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(FONT_SUB);
+    const w = colW * spanCols;
+    const max = w - 10;
+    const lines = doc.splitTextToSize(String(value ?? '—'), max);
+    const h = Math.max(rowH, lines.length * 10 + 6);
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.6);
+    doc.rect(cx, cy, w, h);
+    doc.text(lines, cx + 6, cy + 12);
+    return h;
+  }
+
+  let boxY = y;
+  // L1
+  drawLabel(boxX, boxY, 'Material de Inst. Interna');
+  const h1v1 = drawValue(boxX + colW, boxY, header?.materialInstInterna || '—');
+  drawLabel(boxX + colW*2, boxY, 'Tipo de Inst. Interna');
+  const h1v2 = drawValue(boxX + colW*3, boxY, header?.tipoInstInterna || '—');
+  
+  y += Math.max(rowH, h1v1, h1v2);
+
+  // L2
+  drawLabel(boxX, y, 'Abastecimento');
+  const h2v1 = drawValue(boxX + colW, y, header?.abastecimento || '—');
+  drawLabel(boxX + colW*2, y, 'Manometro');
+  const h2v2 = drawValue(boxX + colW*3, y, header?.manometro || '—');
+  y += Math.max(rowH, h2v1, h2v2);
+
+  // L3
+  drawLabel(boxX, y, 'Analise Gases');
+  const h3v1 = drawValue(boxX + colW, y, formatCpfCnpj(header?.analisGases));
+  drawLabel(boxX + colW*2, y, 'Cronometro');
+  const h3v2 = drawValue(boxX + colW*3, y, formatPhoneBR(header?.cronometro));
+  y += Math.max(rowH, h3v1, h3v2);
+
+  // L4
+  drawLabel(boxX, y, 'Endereço Completo:');
+  const h4v1 = drawValue(boxX + colW, y, header?.enderecoCompleto || '—', 3);
+  y += Math.max(rowH, h4v1) + 8;
+
+//--------------------
+
   y += 18;
   y = ensureSpace(doc, y, 120, margin, bottomMargin);
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(13);
+
+
   doc.text('Aparelhos de Utilização', margin, y);
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(11);
-  y += 16;
 
-  if (Array.isArray(header?.aparelhosInsp) && header.aparelhosInsp.length > 0) {
+y += 20;
+
+  
+ if (Array.isArray(header?.aparelhosInsp) && header.aparelhosInsp.length > 0) {
     header.aparelhosInsp.forEach((item, index) => {
       const text = `Aparelho ${index + 1}: Local: ${item.local ?? '—'}; Tipo: ${item.tipo ?? '—'}; Marca: ${item.marca ?? '—'}; Modelo: ${item.modelo ?? '—'}; Queimadores: ${item.queimadores ?? '—'}; Circuito: ${item.circuito ?? '—'}; Exaustão: ${item.exaustao ?? '—'}; Potência: ${item.pot_nominal ?? '—'}; CO amb: ${item.co_amb ?? '—'}; Tempo: ${item.tempo ?? '—'}; CO n: ${item.co_n ?? '—'}`;
       const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
