@@ -160,6 +160,7 @@ const OSList = ({ searchTerm, filterStatus, onViewOS, onStartInspection }) => {
       const { data: checklistData, error: checklistError } = await supabase
         .from('checklist')
         .select('item_id, descricao, resultado, observacao, foto_url, created_at')
+        .neq('categoria', 'Assinaturas')
         .eq('os_id', ordem.id)
         .order('item_id', { ascending: true });
       if (checklistError) throw checklistError;

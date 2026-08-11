@@ -59,7 +59,7 @@ export async function generateInspectionReport({ logoUrl, header, checklist, sig
 
 
   // linha separadora
-  const lineY = y + 60;
+  let lineY = y + 60;
   doc.setDrawColor(210);
   doc.line(margin, lineY, pageWidth - margin, lineY);
 
@@ -102,129 +102,100 @@ export async function generateInspectionReport({ logoUrl, header, checklist, sig
   doc.setFont('Helvetica', 'normal');
   doc.text(formatDate(header?.inicioChecklist), secondColumnX + 120, lineY + 38);
 
-  doc.setFont('Helvetica', 'bold');
-  doc.text('Abastecimento:', secondColumnX, lineY + 56);
-  doc.setFont('Helvetica', 'normal');
-  doc.text(String(header?.abastecimento ?? '—'), secondColumnX + 120, lineY + 56);
-
-  doc.setFont('Helvetica', 'bold');
-  doc.text('Instalação Interna - Material:', secondColumnX, lineY + 74);
-  doc.setFont('Helvetica', 'normal');
-  doc.text(String(header?.materialInstInterna ?? '—'), secondColumnX + 120, lineY + 74);
-
+  
   y = lineY + 92;
   y = ensureSpace(doc, y, 120, margin, bottomMargin);
 
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(13);
-  doc.text('Rastreabilidade', margin, y);
+
   y += 18;
+  doc.setLineWidth(0.4);
+  doc.line(margin, y - 20, pageWidth - margin, y - 20);
+  doc.setLineWidth(0.2);
+  doc.text('Dados Gerais', margin, y);
+  
 
-  const rastreabilidadeKeys = [
-    { label: 'Manômetro', value: header?.rastreabilidade?.manometro },
-    { label: 'Analis. Gases', value: header?.rastreabilidade?.analisGases },
-    { label: 'Cronômetro', value: header?.rastreabilidade?.cronometro },
-    { label: 'Trena', value: header?.rastreabilidade?.trena },
-    { label: 'Paquímetro', value: header?.rastreabilidade?.paquimetro },
-  ];
-  const rastWidth = (pageWidth - margin * 2) / rastreabilidadeKeys.length;
-  rastreabilidadeKeys.forEach((field, index) => {
-    const x = margin + index * rastWidth;
-    doc.setFont('Helvetica', 'bold');
-    doc.setFontSize(10);
-    doc.text(field.label, x, y);
-    doc.setFont('Helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(String(field.value ?? '—'), x, y + 12);
-  });
+  //const rastreabilidadeKeys = [
+  //  { label: 'Manômetro', value: header?.rastreabilidade?.manometro },
+  //  { label: 'Analis. Gases', value: header?.rastreabilidade?.analisGases },
+  //  { label: 'Cronômetro', value: header?.rastreabilidade?.cronometro },
+  //  { label: 'Trena', value: header?.rastreabilidade?.trena },
+  //  { label: 'Paquímetro', value: header?.rastreabilidade?.paquimetro },
+  //];
+  //const rastWidth = (pageWidth - margin * 2) / rastreabilidadeKeys.length;
+  //rastreabilidadeKeys.forEach((field, index) => {
+  //  const x = margin + index * rastWidth;
+  //  doc.setFont('Helvetica', 'bold');
+  //  doc.setFontSize(10);
+  //  doc.text(field.label, x, y);
+  //  doc.setFont('Helvetica', 'normal');
+  //  doc.setFontSize(10);
+  //  doc.text(String(field.value ?? '—'), x, y + 12);
+  //});
 
-  y += 32;
-  y = ensureSpace(doc, y, 120, margin, bottomMargin);
+  
+  //y = ensureSpace(doc, y, 120, margin, bottomMargin);
 
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text('Dados do Medidor', margin, y);
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(11);
-  y += 16;
+  //doc.setFont('Helvetica', 'bold');
+  //doc.setFontSize(13);
+  //doc.text('Dados do Medidor', margin, y);
+  //doc.setFont('Helvetica', 'normal');
+  //doc.setFontSize(11);
+  //y += 16;
 
-  const drawField = (label, value, xPos, yPos) => {
-    const labelText = `${label}: `;
-    doc.setFont('Helvetica', 'bold');
-    doc.text(labelText, xPos, yPos);
-    doc.setFont('Helvetica', 'normal');
-    const valueLines = doc.splitTextToSize(String(value ?? '—'), pageWidth - xPos - margin - labelText.length * 4);
-    doc.text(valueLines, xPos + 110, yPos);
-    return valueLines.length * 12;
-  };
+  //const drawField = (label, value, xPos, yPos) => {
+  //  const labelText = `${label}: `;
+  //  doc.setFont('Helvetica', 'bold');
+  //  doc.text(labelText, xPos, yPos);
+  //  doc.setFont('Helvetica', 'normal');
+  //  const valueLines = doc.splitTextToSize(String(value ?? '—'), pageWidth - xPos - margin - labelText.length * 4);
+  //  doc.text(valueLines, xPos + 110, yPos);
+  //  return valueLines.length * 12;
+  //};
 
-  const leftX = margin;
-  const rightX = margin + (pageWidth - margin * 2) / 2 + 10;
-  const leftYStart = y;
-  let leftY = leftYStart;
-  leftY += drawField('Número', header?.numeroMedidor, leftX, leftY, fieldWidth);
-  leftY += 14;
-  leftY += drawField('Tipo', header?.tipoMedidor, leftX, leftY, fieldWidth);
-  leftY += 14;
-  leftY += drawField('Marca', header?.marcaMedidor, leftX, leftY, fieldWidth);
-  leftY += 14;
-  leftY += drawField('Leitura', header?.leituraMedidor, leftX, leftY, fieldWidth);
+  //const leftX = margin;
+  //const rightX = margin + (pageWidth - margin * 2) / 2 + 10;
+  //const leftYStart = y;
+  //let leftY = leftYStart;
+  //leftY += drawField('Número', header?.numeroMedidor, leftX, leftY, fieldWidth);
+  //leftY += 14;
+  //leftY += drawField('Tipo', header?.tipoMedidor, leftX, leftY, fieldWidth);
+  //leftY += 14;
+  //leftY += drawField('Marca', header?.marcaMedidor, leftX, leftY, fieldWidth);
+  //leftY += 14;
+  //leftY += drawField('Leitura', header?.leituraMedidor, leftX, leftY, fieldWidth);
 
   let rightY = y;
-  doc.setFont('Helvetica', 'bold');
-  doc.text('Teste de Estanqueidade', rightX, rightY);
-  rightY += 16;
-  rightY += drawField('Pressão Inicial', header?.piEstanqueidade, rightX, rightY, fieldWidth);
-  rightY += 14;
-  rightY += drawField('Pressão Final', header?.pfEstanqueidade, rightX, rightY, fieldWidth);
-  rightY += 14;
-  rightY += drawField('Tempo de Teste', header?.tempoEstanqueidade, rightX, rightY, fieldWidth);
-  rightY += 14;
-  rightY += drawField('Diâmetro da Rede', header?.diametroEstanqueidade, rightX, rightY, fieldWidth);
+  //doc.setFont('Helvetica', 'bold');
+  //doc.text('Teste de Estanqueidade', rightX, rightY);
+  //rightY += 16;
+  //rightY += drawField('Pressão Inicial', header?.piEstanqueidade, rightX, rightY, fieldWidth);
+  //rightY += 14;
+  //rightY += drawField('Pressão Final', header?.pfEstanqueidade, rightX, rightY, fieldWidth);
+  //rightY += 14;
+  //rightY += drawField('Tempo de Teste', header?.tempoEstanqueidade, rightX, rightY, fieldWidth);
+  //rightY += 14;
+  //rightY += drawField('Diâmetro da Rede', header?.diametroEstanqueidade, rightX, rightY, fieldWidth);
 
-  y = Math.max(leftY, rightY) + 20;
-  y = ensureSpace(doc, y, 120, margin, bottomMargin);
+  //y = Math.max(leftY, rightY) + 20;
+  //y = ensureSpace(doc, y, 120, margin, bottomMargin);
 
-  doc.setFont('Helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text('Teste pelo Método do Ábaco', margin, y);
-  doc.setFont('Helvetica', 'normal');
-  doc.setFontSize(11);
-  y += 16;
-  y += drawField('Pressão Inicial', header?.piAbaco, margin, y, fieldWidth);
-  y += 14;
-  y += drawField('Pressão Final', header?.pfAbaco, margin, y, fieldWidth);
-  y += 14;
-  y += drawField('Volume Rede Int.', header?.volumeAbaco, margin, y, fieldWidth);
-  y += 14;
-  y += drawField('Resultado (l/h)', header?.resultadoAbaco, margin, y, fieldWidth);
+  //doc.setFont('Helvetica', 'bold');
+  //doc.setFontSize(13);
+  //doc.text('Teste pelo Método do Ábaco', margin, y);
+  //doc.setFont('Helvetica', 'normal');
+  //doc.setFontSize(11);
+  //y += 16;
+  //y += drawField('Pressão Inicial', header?.piAbaco, margin, y, fieldWidth);
+  //y += 14;
+  //y += drawField('Pressão Final', header?.pfAbaco, margin, y, fieldWidth);
+  //y += 14;
+  //y += drawField('Volume Rede Int.', header?.volumeAbaco, margin, y, fieldWidth);
+  //y += 14;
+  //y += drawField('Resultado (l/h)', header?.resultadoAbaco, margin, y, fieldWidth);
 
-  
-
-  y += 16;
-// ---- Quadro de dados gerais (4 colunas) ----
-  // L1: [OS][valor] [Data][valor]
-  // L2: [Nº Cliente][valor] [Nome Cliente][valor]
-  // L3: [CPF/CNPJ][valor] [Telefone][valor]
-  // L4: [Endereço Completo][valor (colSpan 3)]
-
-   // ---- Layout constants ----
-  const marginTop = 64; // topo
-  const marginX = 48;   // laterais
-  //const bottomMargin = 60;
-
-  
-  // Tamanhos de fonte (modelo)
-  const FONT_TITLE = 14;
-  const FONT_SUB = 9;
-  const FONT_CLAUSE_TITLE = 11;
-  const FONT_BODY = 9;
-
-  const boxX = marginX;
-  const boxW = pageWidth - marginX*2;
-  const colW = boxW / 4;
-  const rowH = 18;
-
+//funcoes format
 function fmtDate(d) {
     try { return new Intl.DateTimeFormat('pt-BR').format(new Date(d ?? Date.now())); } catch { return '—'; }
 }
@@ -253,6 +224,35 @@ function formatPhoneBR(v) {
     }
     return v ?? '—';
   }  
+
+//fim funcao format
+
+//inicio quadro de dados gerais
+
+  y += 16;
+// ---- Quadro de dados gerais (4 colunas) ----
+  // L1: 
+  // L2: 
+  // L3: 
+  // L4: 
+
+   // ---- Layout constants ----
+  const marginTop = 64; // topo
+  const marginX = 48;   // laterais
+  //const bottomMargin = 60;
+
+  
+  // Tamanhos de fonte (modelo)
+  const FONT_TITLE = 14;
+  const FONT_SUB = 9;
+  const FONT_CLAUSE_TITLE = 11;
+  const FONT_BODY = 9;
+
+  const boxX = marginX;
+  const boxW = pageWidth - marginX*2;
+  const colW = boxW / 4;
+  const rowH = 18;
+
 
 function drawLabel(cx, cy, text) {
   // fundo cinza-claro como antes
@@ -291,63 +291,275 @@ function drawValue(cx, cy, value, spanCols = 1) {
   const h1v1 = drawValue(boxX + colW, boxY, header?.materialInstInterna || '—');
   drawLabel(boxX + colW*2, boxY, 'Tipo de Inst. Interna');
   const h1v2 = drawValue(boxX + colW*3, boxY, header?.tipoInstInterna || '—');
-  
   y += Math.max(rowH, h1v1, h1v2);
 
   // L2
   drawLabel(boxX, y, 'Abastecimento');
   const h2v1 = drawValue(boxX + colW, y, header?.abastecimento || '—');
-  drawLabel(boxX + colW*2, y, 'Manometro');
-  const h2v2 = drawValue(boxX + colW*3, y, header?.manometro || '—');
+  drawLabel(boxX + colW*2, y, 'Manômetro');
+  const h2v2 = drawValue(boxX + colW*3, y, header?.rastreabilidade?.manometro || '—');
   y += Math.max(rowH, h2v1, h2v2);
 
   // L3
-  drawLabel(boxX, y, 'Analise Gases');
-  const h3v1 = drawValue(boxX + colW, y, formatCpfCnpj(header?.analisGases));
-  drawLabel(boxX + colW*2, y, 'Cronometro');
-  const h3v2 = drawValue(boxX + colW*3, y, formatPhoneBR(header?.cronometro));
+  drawLabel(boxX, y, 'Analisador de  Gases');
+  const h3v1 = drawValue(boxX + colW, y, header?.rastreabilidade?.analisGases || '—');
+  drawLabel(boxX + colW*2, y, 'Cronômetro');
+  const h3v2 = drawValue(boxX + colW*3, y, header?.rastreabilidade?.cronometro || '—');
   y += Math.max(rowH, h3v1, h3v2);
 
   // L4
-  drawLabel(boxX, y, 'Endereço Completo:');
-  const h4v1 = drawValue(boxX + colW, y, header?.enderecoCompleto || '—', 3);
-  y += Math.max(rowH, h4v1) + 8;
+  drawLabel(boxX, y, 'Trena');
+  const h4v1 = drawValue(boxX + colW, y, header?.rastreabilidade?.trena || '—');
+  drawLabel(boxX + colW*2, y, 'Paquímetro');
+  const h4v2 = drawValue(boxX + colW*3, y, header?.rastreabilidade?.paquimetro || '—');
+  y += Math.max(rowH, h4v1, h4v2);
 
 //--------------------
 
-  y += 18;
-  y = ensureSpace(doc, y, 120, margin, bottomMargin);
+//inicio quadro de dados medidor
+ 
+  y += 32;
   doc.setFont('Helvetica', 'bold');
   doc.setFontSize(13);
+  doc.text('Dados do Medidor', margin, y);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(11);
+  y += 8;
+
+function drawLabel(cx, cy, text) {
+  // fundo cinza-claro como antes
+  doc.setFillColor (245);
+  doc.rect(cx, cy, colW, rowH, 'F');
+
+  // 🔥 adiciona borda preta (antes só existia no drawValue)
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.6);
+  doc.rect(cx, cy, colW, rowH); // desenha borda
+
+  // texto
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(FONT_SUB);
+  doc.setTextColor(0);
+  doc.text(String(text), cx + 6, cy + 12);
+}
+
+function drawValue(cx, cy, value, spanCols = 1) {
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(FONT_SUB);
+    const w = colW * spanCols;
+    const max = w - 10;
+    const lines = doc.splitTextToSize(String(value ?? '—'), max);
+    const h = Math.max(rowH, lines.length * 10 + 6);
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.6);
+    doc.rect(cx, cy, w, h);
+    doc.text(lines, cx + 6, cy + 12);
+    return h;
+  }
+
+  boxY = y;
+  // L1
+  drawLabel(boxX, boxY, 'Número');
+  const h1v1_q1 = drawValue(boxX + colW, boxY, header?.numeroMedidor || '—');
+  drawLabel(boxX + colW*2, boxY, 'Tipo');
+  const h1v2_q1 = drawValue(boxX + colW*3, boxY, header?.tipoMedidor || '—');
+  y += Math.max(rowH, h1v1_q1, h1v2_q1);
+
+  // L2
+  drawLabel(boxX, y, 'Marca');
+  const h2v1_q1 = drawValue(boxX + colW, y, header?.marcaMedidor || '—');
+  drawLabel(boxX + colW*2, y, 'Leitura');
+  const h2v2_q1 = drawValue(boxX + colW*3, y, header?.leituraMedidor || '—');
+  y += Math.max(rowH, h2v1_q1, h2v2_q1);
+
+  // L3
+  //drawLabel(boxX, y, 'Analisador de  Gases');
+  //const h3v1_q1 = drawValue(boxX + colW, y, header?.rastreabilidade?.analisGases || '—');
+  //drawLabel(boxX + colW*2, y, 'Cronômetro');
+ // const h3v2_q1 = drawValue(boxX + colW*3, y, header?.rastreabilidade?.cronometro || '—');
+ // y += Math.max(rowH, h3v1_q1, h3v2_q1);
+
+  // L4
+  //drawLabel(boxX, y, 'Trena');
+  //const h4v1_q1 = drawValue(boxX + colW, y, header?.rastreabilidade?.trena || '—');
+  //drawLabel(boxX + colW*2, y, 'Paquímetro');
+ // const h4v2_q1 = drawValue(boxX + colW*3, y, header?.rastreabilidade?.paquimetro || '—');
+  //y += Math.max(rowH, h4v1_q1, h4v2_q1);
+
+//--------------------
+
+//inicio quadro teste
+ 
+  y += 32;
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(13);
+  doc.text('Testes (Estanqueidade ou Ábaco)', margin, y);
+  doc.setFont('Helvetica', 'normal');
+  doc.setFontSize(11);
+  y += 8;
+
+function drawLabel(cx, cy, text) {
+  // fundo cinza-claro como antes
+  doc.setFillColor (245);
+  doc.rect(cx, cy, colW, rowH, 'F');
+
+  // 🔥 adiciona borda preta (antes só existia no drawValue)
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.6);
+  doc.rect(cx, cy, colW, rowH); // desenha borda
+
+  // texto
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(FONT_SUB);
+  doc.setTextColor(0);
+  doc.text(String(text), cx + 6, cy + 12);
+}
+
+function drawValue(cx, cy, value, spanCols = 1) {
+    doc.setFont('Helvetica', 'normal');
+    doc.setFontSize(FONT_SUB);
+    const w = colW * spanCols;
+    const max = w - 10;
+    const lines = doc.splitTextToSize(String(value ?? '—'), max);
+    const h = Math.max(rowH, lines.length * 10 + 6);
+    doc.setDrawColor(0);
+    doc.setLineWidth(0.6);
+    doc.rect(cx, cy, w, h);
+    doc.text(lines, cx + 6, cy + 12);
+    return h;
+  }
+
+  boxY = y;
+  // L1
+  drawLabel(boxX, boxY, 'Estanq. - Pressão Inicial');
+  const h1v1_q2 = drawValue(boxX + colW, boxY, header?.piEstanqueidade || '—');
+  drawLabel(boxX + colW*2, boxY, 'Ábaco - Pressão Inicial');
+  const h1v2_q2 = drawValue(boxX + colW*3, boxY, header?.piAbaco || '—');
+  y += Math.max(rowH, h1v1_q2, h1v2_q2);
+
+  // L2
+  drawLabel(boxX, y, 'Estanq. - Pressão Final');
+  const h2v1_q2 = drawValue(boxX + colW, y, header?.pfEstanqueidade || '—');
+  drawLabel(boxX + colW*2, y, 'Ábaco - Pressão Final');
+  const h2v2_q2 = drawValue(boxX + colW*3, y, header?.pfAbaco || '—');
+  y += Math.max(rowH, h2v1_q2, h2v2_q2);
+
+  // L3
+  drawLabel(boxX, y, 'Estanq. - Tempo de teste');
+  const h3v1_q2 = drawValue(boxX + colW, y, header?.tempoEstanqueidade || '—');
+  drawLabel(boxX + colW*2, y, 'Ábaco - Volume Rede');
+  const h3v2_q2 = drawValue(boxX + colW*3, y, header?.volumeAbaco || '—');
+  y += Math.max(rowH, h3v1_q2, h3v2_q2);
+
+  // L4
+  drawLabel(boxX, y, 'Estanq. - Diâmetro da Rede');
+  const h4v1_q2 = drawValue(boxX + colW, y, header?.diametroEstanqueidade || '—');
+  drawLabel(boxX + colW*2, y, 'Ábaco - Resultado (l/h)');
+  const h4v2_q2 = drawValue(boxX + colW*3, y, header?.resultadoAbaco || '—');
+  y += Math.max(rowH, h4v1_q2, h4v2_q2);
+
+//--------------------
 
 
+
+
+  y += 28;
+  y = ensureSpace(doc, y, 120, margin, bottomMargin);
+ // doc.setLineWidth(0.4);
+ // doc.line(margin, y - 20, pageWidth - margin, y - 20);
+ // doc.setLineWidth(0.2);
+  doc.setFont('Helvetica', 'bold');
+  doc.setFontSize(13);
   doc.text('Aparelhos de Utilização', margin, y);
   doc.setFont('Helvetica', 'normal');
   doc.setFontSize(11);
 
 y += 20;
 
-  
- if (Array.isArray(header?.aparelhosInsp) && header.aparelhosInsp.length > 0) {
-    header.aparelhosInsp.forEach((item, index) => {
-      const text = `Aparelho ${index + 1}: Local: ${item.local ?? '—'}; Tipo: ${item.tipo ?? '—'}; Marca: ${item.marca ?? '—'}; Modelo: ${item.modelo ?? '—'}; Queimadores: ${item.queimadores ?? '—'}; Circuito: ${item.circuito ?? '—'}; Exaustão: ${item.exaustao ?? '—'}; Potência: ${item.pot_nominal ?? '—'}; CO amb: ${item.co_amb ?? '—'}; Tempo: ${item.tempo ?? '—'}; CO n: ${item.co_n ?? '—'}`;
-      const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
-      y = ensureSpace(doc, y, lines.length * 12 + 6, margin, bottomMargin);
-      doc.text(lines, margin, y);
-      y += lines.length * 12 + 8;
-    });
-  } else {
-    doc.text('Nenhum aparelho registrado.', margin, y);
-    y += 18;
-  }
+ //-----------------
+ //fucao para desenhar os aparelhos de utilizacao
+function desenharQuadro(y, item, titulo) {
+
+let boxY = y;
+// Linha 1
+drawLabel(boxX, boxY, 'Local');
+const h1v1 = drawValue(boxX + colW, boxY, item.local || '—');
+drawLabel(boxX + colW * 2, boxY, 'Tipo');
+const h1v2 = drawValue(boxX + colW * 3, boxY, item.tipo || '—');
+y += Math.max(rowH, h1v1, h1v2);
+
+// Linha 2
+drawLabel(boxX, y, 'Marca');
+const h2v1 = drawValue(boxX + colW, y, item.marca || '—');
+drawLabel(boxX + colW * 2, y, 'Modelo');
+const h2v2 = drawValue(boxX + colW * 3, y, item.modelo || '—');
+y += Math.max(rowH, h2v1, h2v2);
+
+// Linha 3
+drawLabel(boxX, y, 'Queimadores');
+const h3v1 = drawValue(boxX + colW, y, item.queimadores || '—');
+drawLabel(boxX + colW * 2, y, 'Circuito');
+const h3v2 = drawValue(boxX + colW * 3, y, item.circuito || '—');
+y += Math.max(rowH, h3v1, h3v2);
+
+// Linha 4
+drawLabel(boxX, y, 'Exaustão');
+const h4v1 = drawValue(boxX + colW, y, item.exaustao || '—');
+drawLabel(boxX + colW * 2, y, 'Potência');
+const h4v2 = drawValue(boxX + colW * 3, y, item.pot_nominal || '—');
+y += Math.max(rowH, h4v1, h4v2);
+
+// Linha 5
+drawLabel(boxX, y, 'CO Amb.');
+const h5v1 = drawValue(boxX + colW, y, item.co_amb || '—');
+drawLabel(boxX + colW * 2, y, 'Tempo');
+const h5v2 = drawValue(boxX + colW * 3, y, item.tempo || '—');
+y += Math.max(rowH, h5v1, h5v2);
+
+// Linha 6
+drawLabel(boxX, y, 'CO Normalizado');
+const h6v1 = drawValue(boxX + colW,	y,item.co_n || '—',3);
+y += Math.max(rowH, h6v1);
+
+return y;
+}
+//-----------------
+//Array de aparelhos
+if (Array.isArray(header?.aparelhosInsp) && header.aparelhosInsp.length > 0) {
+	header.aparelhosInsp.forEach((item, index) => {
+	y = ensureSpace(doc, y, 140, marginX, bottomMargin);
+	doc.setFont('Helvetica', 'bold');
+	doc.setFontSize(11);
+	doc.text(`APARELHO ${index + 1}`, boxX, y);
+	y += 10;
+	y = desenharQuadro(y, item);
+	y += 16; // espaço entre aparelhos
+	});
+}
+//--------------------
+
+ //if (Array.isArray(header?.aparelhosInsp) && header.aparelhosInsp.length > 0) {
+ //   header.aparelhosInsp.forEach((item, index) => {
+ //     const text = `Aparelho ${index + 1}: Local: ${item.local ?? '—'}; Tipo: ${item.tipo ?? '—'}; Marca: ${item.marca ?? '—'}; Modelo: ${item.modelo ?? '—'}; Queimadores: ${item.queimadores ?? '—'}; Circuito: ${item.circuito ?? '—'}; Exaustão: ${item.exaustao ?? '—'}; Potência: ${item.pot_nominal ?? '—'}; CO amb: ${item.co_amb ?? '—'}; Tempo: ${item.tempo ?? '—'}; CO n: ${item.co_n ?? '—'}`;
+ //     const lines = doc.splitTextToSize(text, pageWidth - margin * 2);
+ //     y = ensureSpace(doc, y, lines.length * 12 + 6, margin, bottomMargin);
+ //     doc.text(lines, margin, y);
+ //     y += lines.length * 12 + 8;
+ //   });
+ // } else {
+ //   doc.text('Nenhum aparelho registrado.', margin, y);
+ //   y += 18;
+ // }
 
   // ===== Título Checklist =====
-  y += 12;
+  doc.addPage();
+  y = margin;
+  y += 22;
   doc.setFont('Helvetica', 'bold'); doc.setFontSize(14);
-  doc.text('Revisão do Checklist', margin, y);
+  doc.text('Checklist de Inspeção', margin, y);
 
   // ===== Itens do Checklist =====
-  y += 14;
+  y += 24;
   doc.setFont('Helvetica', 'normal'); doc.setFontSize(11);
 
   // pré-carrega fotos (para evitar várias fetches repetidas)
