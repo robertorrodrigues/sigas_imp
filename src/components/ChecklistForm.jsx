@@ -24,6 +24,14 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
   const [loadingAparelhos, setLoadingAparelhos] = useState(false);
   const [savingDadosGerais, setSavingDadosGerais] = useState(false);
   const [savingAparelho, setSavingAparelho] = useState(false);
+
+  // Fotos de aparelhos: mapa aparelhoId -> array de { dataUrl, metadata, descricao, observacao }
+  const [aparelhoPhotos, setAparelhoPhotos] = useState({});
+  const [showAparelhoPhotoCapture, setShowAparelhoPhotoCapture] = useState(false);
+  const [currentAparelhoForPhoto, setCurrentAparelhoForPhoto] = useState(null);
+  const [showAparelhoPhotosModal, setShowAparelhoPhotosModal] = useState(false);
+  const [viewingAparelhoPhoto, setViewingAparelhoPhoto] = useState(null);
+  const [viewingAparelhoPhotoIndex, setViewingAparelhoPhotoIndex] = useState(null);
   const [dadosGeraisData, setDadosGeraisData] = useState({
     abastecimento: '',
     material_inst_interna: '',
@@ -313,6 +321,31 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
     carregarDadosGerais();
     return () => { cancelado = true; };
   }, [os?.numero, showDadosGerais]);
+
+  // Sincroniza fotos vindas do banco (se houver campo 'fotos' ou 'foto_url') para o estado aparelhoPhotos
+  useEffect(() => {
+    if (!aparelhosList || aparelhosList.length === 0) return;
+    const map = {};
+    aparelhosList.forEach((item) => {
+      if (!item) return;
+      if (item.fotos) {
+        try {
+          const parsed = typeof item.fotos === 'string' ? JSON.parse(item.fotos) : item.fotos;
+          if (Array.isArray(parsed)) map[item.id] = parsed;
+        } catch {
+          // ignore parse errors
+        }
+      } else if (item.foto_url) {
+        try {
+          const meta = item.foto_metadata ? JSON.parse(item.foto_metadata) : undefined;
+          map[item.id] = [{ dataUrl: item.foto_url, metadata: meta, descricao: '', observacao: '' }];
+        } catch {
+          map[item.id] = [{ dataUrl: item.foto_url, metadata: undefined, descricao: '', observacao: '' }];
+        }
+      }
+    });
+    setAparelhoPhotos((prev) => ({ ...prev, ...map }));
+  }, [aparelhosList]);
 
   const handleItemChange = (itemId, value) => {
     setChecklistData((prev) => ({ ...prev, [itemId]: value }));
@@ -805,6 +838,13 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
         resetAparelhoForm();
       }
 
+      // limpar fotos locais também
+      setAparelhoPhotos((prev) => {
+        const copy = { ...prev };
+        delete copy[aparelhoId];
+        return copy;
+      });
+
       toast({
         title: 'Aparelho excluído',
         description: 'O aparelho foi removido com sucesso.',
@@ -816,6 +856,65 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
         description: error?.message ?? 'Não foi possível excluir o aparelho.',
         variant: 'destructive',
       });
+    }
+  };
+
+  // --- Gerenciamento de fotos de aparelhos ---
+  const openAparelhoPhotosModal = (aparelhoId) => {
+    setCurrentAparelhoForPhoto(aparelhoId);
+    setShowAparelhoPhotosModal(true);
+  };
+
+  const openAparelhoPhotoCapture = (aparelhoId) => {
+    setCurrentAparelhoForPhoto(aparelhoId);
+    setShowAparelhoPhotoCapture(true);
+  };
+
+  const handleSaveAparelhoPhoto = async (photo) => {
+    if (!currentAparelhoForPhoto) return;
+    const id = currentAparelhoForPhoto;
+    const next = (aparelhoPhotos[id] ?? []).concat({ dataUrl: photo.dataUrl, metadata: photo.metadata, descricao: '', observacao: '' });
+    setAparelhoPhotos((prev) => ({ ...prev, [id]: next }));
+
+    // tentar persistir ao banco no campo 'fotos' (se existir). Falhar silenciosamente é aceitável.
+    try {
+      const { error } = await supabase.from('aparelhos_insp').update({ fotos: JSON.stringify(next) }).eq('id', id);
+      if (error) {
+        // se falhar por coluna inexistente, ignorar
+        console.warn('Não foi possível persistir fotos do aparelho:', error.message || error);
+      }
+    } catch (err) {
+      console.warn('Erro ao persistir fotos do aparelho:', err);
+    }
+
+    setShowAparelhoPhotoCapture(false);
+  };
+
+  const handleDeleteAparelhoPhoto = async (aparelhoId, index) => {
+    const arr = (aparelhoPhotos[aparelhoId] ?? []).slice();
+    if (index < 0 || index >= arr.length) return;
+    arr.splice(index, 1);
+    setAparelhoPhotos((prev) => ({ ...prev, [aparelhoId]: arr }));
+
+    try {
+      const { error } = await supabase.from('aparelhos_insp').update({ fotos: JSON.stringify(arr) }).eq('id', aparelhoId);
+      if (error) console.warn('Não foi possível atualizar fotos no banco:', error.message || error);
+    } catch (err) {
+      console.warn('Erro ao atualizar fotos:', err);
+    }
+  };
+
+  const handleUpdateAparelhoPhotoMeta = async (aparelhoId, index, field, value) => {
+    const arr = (aparelhoPhotos[aparelhoId] ?? []).slice();
+    if (!arr[index]) return;
+    arr[index] = { ...arr[index], [field]: value };
+    setAparelhoPhotos((prev) => ({ ...prev, [aparelhoId]: arr }));
+
+    try {
+      const { error } = await supabase.from('aparelhos_insp').update({ fotos: JSON.stringify(arr) }).eq('id', aparelhoId);
+      if (error) console.warn('Não foi possível atualizar metadados da foto:', error.message || error);
+    } catch (err) {
+      console.warn('Erro ao atualizar metadados da foto:', err);
     }
   };
 
@@ -857,19 +956,24 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
       };
 
       if (editingAparelhoId) {
+        // incluir fotos se houver
+        const fotosToSave = aparelhoPhotos[editingAparelhoId] ?? [];
+        const updatePayload = { ...payload, fotos: fotosToSave.length ? JSON.stringify(fotosToSave) : null };
+
         const { error } = await supabase
           .from('aparelhos_insp')
-          .update(payload)
+          .update(updatePayload)
           .eq('id', editingAparelhoId);
 
         if (error) throw error;
 
-        setAparelhosList((prev) => prev.map((item) => (item.id === editingAparelhoId ? { ...item, ...payload } : item)));
+        setAparelhosList((prev) => prev.map((item) => (item.id === editingAparelhoId ? { ...item, ...payload, fotos: fotosToSave } : item)));
         toast({
           title: 'Aparelho atualizado',
           description: 'As informações do aparelho foram atualizadas.',
         });
       } else {
+        // criação normal (fotos podem ser adicionadas após salvar)
         const { data, error } = await supabase.from('aparelhos_insp').insert(payload).select().single();
 
         if (error) throw error;
@@ -1018,6 +1122,17 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
                             <Pencil className="w-4 h-4 mr-1" />
                             Alterar
                           </Button>
+
+                          <Button
+                            onClick={() => openAparelhoPhotosModal(item.id)}
+                            variant="outline"
+                            size="sm"
+                            className="border-white/20 text-white hover:bg-white/10"
+                          >
+                            <Camera className="w-4 h-4 mr-1" />
+                            Fotos ({(aparelhoPhotos[item.id] || []).length})
+                          </Button>
+
                           <Button
                             onClick={() => handleDeleteAparelho(item.id)}
                             variant="outline"
@@ -1182,6 +1297,82 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
               {savingAparelho ? 'Salvando...' : editingAparelhoId ? 'Atualizar Aparelho' : 'Salvar Aparelho'}
             </Button>
           </div>
+
+          {/* Photo capture modal (aparelho) */}
+          {showAparelhoPhotoCapture && (
+            <PhotoCapture
+              onClose={() => setShowAparelhoPhotoCapture(false)}
+              onSave={handleSaveAparelhoPhoto}
+              itemId={currentAparelhoForPhoto}
+            />
+          )}
+
+          {/* Aparelho photos modal */}
+          {showAparelhoPhotosModal && currentAparelhoForPhoto && (
+            <div className="fixed inset-0 z-60 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm">
+              <div className="bg-white/10 rounded-2xl p-4 w-full max-w-3xl border border-white/20">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold text-white">Fotos do Aparelho</h3>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => openAparelhoPhotoCapture(currentAparelhoForPhoto)}
+                      className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700"
+                    >
+                      <Camera className="w-4 h-4 mr-2" />Adicionar Foto
+                    </Button>
+                    <Button variant="outline" onClick={() => setShowAparelhoPhotosModal(false)} className="border-white/20 text-white hover:bg-white/10">
+                      Fechar
+                    </Button>
+                  </div>
+                </div>
+
+                <div className="space-y-4 max-h-[60vh] overflow-y-auto">
+                  {(aparelhoPhotos[currentAparelhoForPhoto] || []).length === 0 ? (
+                    <p className="text-gray-300">Nenhuma foto cadastrada.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      {(aparelhoPhotos[currentAparelhoForPhoto] || []).map((p, i) => (
+                        <div key={i} className="bg-white/5 rounded-lg p-2">
+                          <img src={p.dataUrl} alt={`Foto ${i+1}`} className="w-full h-40 object-cover rounded cursor-pointer" onClick={() => { setViewingAparelhoPhoto(p.dataUrl); setViewingAparelhoPhotoIndex(i); }} />
+                          <div className="mt-2 text-sm text-gray-300">
+                            <input
+                              value={p.descricao || ''}
+                              placeholder="Descrição"
+                              onChange={(e) => handleUpdateAparelhoPhotoMeta(currentAparelhoForPhoto, i, 'descricao', e.target.value)}
+                              className="w-full px-2 py-1 bg-white/5 rounded border border-white/10 text-white"
+                            />
+                            <textarea
+                              value={p.observacao || ''}
+                              placeholder="Observação"
+                              onChange={(e) => handleUpdateAparelhoPhotoMeta(currentAparelhoForPhoto, i, 'observacao', e.target.value)}
+                              className="w-full mt-2 px-2 py-1 bg-white/5 rounded border border-white/10 text-white"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2 mt-2">
+                            <Button variant="outline" onClick={() => { setViewingAparelhoPhoto(p.dataUrl); setViewingAparelhoPhotoIndex(i); }} className="border-white/20 text-white hover:bg-white/10">Ver</Button>
+                            <Button onClick={() => handleDeleteAparelhoPhoto(currentAparelhoForPhoto, i)} className="border-red-400/30 text-red-200 hover:bg-red-500/10">Excluir</Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Visualizar foto em overlay */}
+          {viewingAparelhoPhoto && (
+            <div className="fixed inset-0 z-70 flex items-center justify-center p-4 bg-black/80">
+              <div className="bg-white/10 rounded-lg p-4 w-full max-w-4xl">
+                <div className="flex justify-end">
+                  <button onClick={() => { setViewingAparelhoPhoto(null); setViewingAparelhoPhotoIndex(null); }} className="text-gray-300"><X className="w-6 h-6" /></button>
+                </div>
+                <img src={viewingAparelhoPhoto} alt="Foto" className="w-full object-contain max-h-[75vh]" />
+              </div>
+            </div>
+          )}
+
         </motion.div>
       </div>
     );
