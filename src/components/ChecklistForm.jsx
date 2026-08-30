@@ -252,7 +252,41 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
 
         if (error) throw error;
 
-        if (!cancelado) setAparelhosList(data ?? []);
+        if (!cancelado) {
+          setAparelhosList(data ?? []);
+
+          // carregar fotos relacionadas a estes aparelhos a partir da tabela fotos_apar_insp
+          try {
+            const aparelhoIds = (data ?? []).map((a) => a.id).filter(Boolean);
+            if (aparelhoIds.length > 0) {
+              const { data: fotosRows, error: fotosError } = await supabase
+                .from('fotos_apar_insp')
+                .select('*')
+                .in('aparelhos_insp_id', aparelhoIds);
+
+              if (fotosError) throw fotosError;
+
+              const map = {};
+              (fotosRows ?? []).forEach((row) => {
+                const aid = row.aparelhos_insp_id;
+                if (!map[aid]) map[aid] = [];
+                map[aid].push({
+                  id: row.id,
+                  dataUrl: row.foto_url,
+                  metadata: row.foto_metadata ?? undefined,
+                  descricao: row.descricao ?? '',
+                  observacao: row.observacao ?? '',
+                });
+              });
+
+              setAparelhoPhotos((prev) => ({ ...prev, ...map }));
+            } else {
+              setAparelhoPhotos({});
+            }
+          } catch (errFotos) {
+            console.warn('Erro ao carregar fotos de aparelhos:', errFotos);
+          }
+        }
       } catch (err) {
         if (!cancelado) {
           toast({
@@ -826,6 +860,17 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
     if (!aparelhoId) return;
 
     try {
+      // tentar remover fotos relacionadas primeiro (para evitar conflito de FK)
+      try {
+        const { error: fotosError } = await supabase
+          .from('fotos_apar_insp')
+          .delete()
+          .eq('aparelhos_insp_id', aparelhoId);
+        if (fotosError) console.warn('Erro ao deletar fotos do aparelho:', fotosError.message || fotosError);
+      } catch (errFotos) {
+        console.warn('Erro ao deletar fotos do aparelho:', errFotos);
+      }
+
       const { error } = await supabase
         .from('aparelhos_insp')
         .delete()
@@ -867,40 +912,80 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
 
   const openAparelhoPhotoCapture = (aparelhoId) => {
     setCurrentAparelhoForPhoto(aparelhoId);
+    setShowAparelhoPhotosModal(false);
+    setViewingAparelhoPhoto(null);
     setShowAparelhoPhotoCapture(true);
   };
 
   const handleSaveAparelhoPhoto = async (photo) => {
     if (!currentAparelhoForPhoto) return;
     const id = currentAparelhoForPhoto;
+    // atualização otimista local
     const next = (aparelhoPhotos[id] ?? []).concat({ dataUrl: photo.dataUrl, metadata: photo.metadata, descricao: '', observacao: '' });
     setAparelhoPhotos((prev) => ({ ...prev, [id]: next }));
 
-    // tentar persistir ao banco no campo 'fotos' (se existir). Falhar silenciosamente é aceitável.
+    // Persistir na tabela fotos_apar_insp
     try {
-      const { error } = await supabase.from('aparelhos_insp').update({ fotos: JSON.stringify(next) }).eq('id', id);
-      if (error) {
-        // se falhar por coluna inexistente, ignorar
-        console.warn('Não foi possível persistir fotos do aparelho:', error.message || error);
+      const resolvedCompanyId = await resolveCompanyId();
+      if (!resolvedCompanyId) {
+        console.warn('Empresa não resolvida; foto não será persistida no banco.');
+      } else {
+        const insertPayload = {
+          aparelhos_insp_id: id,
+          foto_url: photo.dataUrl,
+          foto_metadata: photo.metadata ?? {},
+          descricao: '',
+          observacao: '',
+          xid_empresa: resolvedCompanyId,
+          created_at: new Date().toISOString(),
+        };
+
+        const { data, error } = await supabase.from('fotos_apar_insp').insert(insertPayload).select().single();
+        if (error) {
+          console.warn('Não foi possível persistir foto na tabela fotos_apar_insp:', error.message || error);
+        } else {
+          // substituir o item otimista pelo registro retornado (com id)
+          setAparelhoPhotos((prev) => {
+            const arr = (prev[id] ?? []).slice();
+            const lastIndex = arr.length - 1;
+            if (lastIndex >= 0) {
+              arr[lastIndex] = {
+                id: data.id,
+                dataUrl: data.foto_url,
+                metadata: data.foto_metadata ?? photo.metadata ?? {},
+                descricao: data.descricao ?? '',
+                observacao: data.observacao ?? '',
+              };
+            }
+            return { ...prev, [id]: arr };
+          });
+        }
       }
     } catch (err) {
-      console.warn('Erro ao persistir fotos do aparelho:', err);
+      console.warn('Erro ao persistir foto na tabela fotos_apar_insp:', err);
     }
 
     setShowAparelhoPhotoCapture(false);
+    setShowAparelhoPhotosModal(true);
   };
 
   const handleDeleteAparelhoPhoto = async (aparelhoId, index) => {
     const arr = (aparelhoPhotos[aparelhoId] ?? []).slice();
     if (index < 0 || index >= arr.length) return;
-    arr.splice(index, 1);
+    const [removed] = arr.splice(index, 1);
     setAparelhoPhotos((prev) => ({ ...prev, [aparelhoId]: arr }));
 
     try {
-      const { error } = await supabase.from('aparelhos_insp').update({ fotos: JSON.stringify(arr) }).eq('id', aparelhoId);
-      if (error) console.warn('Não foi possível atualizar fotos no banco:', error.message || error);
+      if (removed?.id) {
+        const { error } = await supabase.from('fotos_apar_insp').delete().eq('id', removed.id);
+        if (error) console.warn('Não foi possível excluir foto do banco:', error.message || error);
+      } else {
+        // fallback: se foto não tiver id no banco, tentar atualizar campo fotos na tabela aparelhos_insp
+        const { error } = await supabase.from('aparelhos_insp').update({ fotos: JSON.stringify(arr) }).eq('id', aparelhoId);
+        if (error) console.warn('Não foi possível atualizar fotos no banco (fallback):', error.message || error);
+      }
     } catch (err) {
-      console.warn('Erro ao atualizar fotos:', err);
+      console.warn('Erro ao excluir foto:', err);
     }
   };
 
@@ -911,8 +996,23 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
     setAparelhoPhotos((prev) => ({ ...prev, [aparelhoId]: arr }));
 
     try {
-      const { error } = await supabase.from('aparelhos_insp').update({ fotos: JSON.stringify(arr) }).eq('id', aparelhoId);
-      if (error) console.warn('Não foi possível atualizar metadados da foto:', error.message || error);
+      const fotoId = arr[index]?.id;
+      if (fotoId) {
+        const updateData = {};
+        if (field === 'metadata') {
+          updateData.foto_metadata = arr[index].metadata ?? {};
+        } else if (field === 'descricao') {
+          updateData.descricao = arr[index].descricao ?? null;
+        } else if (field === 'observacao') {
+          updateData.observacao = arr[index].observacao ?? null;
+        }
+        const { error } = await supabase.from('fotos_apar_insp').update(updateData).eq('id', fotoId);
+        if (error) console.warn('Não foi possível atualizar metadados da foto:', error.message || error);
+      } else {
+        // fallback: persist como fotos no aparelho (coluna fotos) se existir
+        const { error } = await supabase.from('aparelhos_insp').update({ fotos: JSON.stringify(arr) }).eq('id', aparelhoId);
+        if (error) console.warn('Não foi possível atualizar metadados da foto (fallback):', error.message || error);
+      }
     } catch (err) {
       console.warn('Erro ao atualizar metadados da foto:', err);
     }
@@ -956,9 +1056,8 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
       };
 
       if (editingAparelhoId) {
-        // incluir fotos se houver
-        const fotosToSave = aparelhoPhotos[editingAparelhoId] ?? [];
-        const updatePayload = { ...payload, fotos: fotosToSave.length ? JSON.stringify(fotosToSave) : null };
+        // atualizar aparelho (fotos são gerenciadas separadamente na tabela fotos_apar_insp)
+        const updatePayload = { ...payload };
 
         const { error } = await supabase
           .from('aparelhos_insp')
@@ -967,7 +1066,7 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
 
         if (error) throw error;
 
-        setAparelhosList((prev) => prev.map((item) => (item.id === editingAparelhoId ? { ...item, ...payload, fotos: fotosToSave } : item)));
+        setAparelhosList((prev) => prev.map((item) => (item.id === editingAparelhoId ? { ...item, ...payload } : item)));
         toast({
           title: 'Aparelho atualizado',
           description: 'As informações do aparelho foram atualizadas.',
@@ -1349,8 +1448,8 @@ const ChecklistForm = ({ os, onClose, onSubmit }) => {
                             />
                           </div>
                           <div className="flex justify-end gap-2 mt-2">
-                            <Button variant="outline" onClick={() => { setViewingAparelhoPhoto(p.dataUrl); setViewingAparelhoPhotoIndex(i); }} className="border-white/20 text-white hover:bg-white/10">Ver</Button>
-                            <Button onClick={() => handleDeleteAparelhoPhoto(currentAparelhoForPhoto, i)} className="border-red-400/30 text-red-200 hover:bg-red-500/10">Excluir</Button>
+                            <Button onClick={() => { setViewingAparelhoPhoto(p.dataUrl); setViewingAparelhoPhotoIndex(i); }} className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border border-blue-500">Ver</Button>
+                            <Button onClick={() => handleDeleteAparelhoPhoto(currentAparelhoForPhoto, i)} className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white border border-blue-500">Excluir</Button>
                           </div>
                         </div>
                       ))}
