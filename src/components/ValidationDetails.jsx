@@ -164,7 +164,7 @@ const ValidationDetails = ({ validation, onClose }) => {
 
       toast({
         title: `Inspeção ${resultado}!`,
-        description: `OS ${validation.osId} foi marcada como ${resultado}.` + (resultado === "Apto" ? " Status da OS: encerrado." : "")
+        description: `OS ${validation.numeroOS} foi marcada como ${resultado}.` + (resultado === "Apto" ? " Status da OS: encerrado." : "")
       });
 
       onClose();
