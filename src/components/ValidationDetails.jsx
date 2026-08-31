@@ -25,6 +25,21 @@ const safeText = (v) => {
   return '—';
 };
 
+const getValidationOsNumero = (validation) => {
+  if (!validation) return '—';
+
+  const candidates = [
+    validation?.numero,
+    validation?.os_numero,
+    validation?.osId,
+    validation?.ordem_servico?.numero,
+    validation?.ordem_servico_id,
+  ];
+
+  const value = candidates.find((item) => item !== null && item !== undefined && String(item).trim() !== '');
+  return value == null ? '—' : String(value);
+};
+
 const ValidationDetails = ({ validation, onClose }) => {
   const [comment, setComment] = useState(validation?.parecer || "");
   const [saving, setSaving] = useState(false);
@@ -161,10 +176,9 @@ const ValidationDetails = ({ validation, onClose }) => {
 
         if (osError) throw osError;
       }
-
       toast({
         title: `Inspeção ${resultado}!`,
-        description: `OS ${validation.numeroOS} foi marcada como ${resultado}.` + (resultado === "Apto" ? " Status da OS: encerrado." : "")
+        description: `OS ${getValidationOsNumero(validation)} foi marcada como ${resultado}.` + (resultado === "Apto" ? " Status da OS: encerrado." : "")
       });
 
       onClose();
