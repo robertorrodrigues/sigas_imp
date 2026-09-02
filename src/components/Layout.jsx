@@ -17,10 +17,15 @@ import {
   LogOut,
   Award,
   Flame,
-  Package
+  Package,
+  KeyRound,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { supabase } from '@/lib/customSupabaseClient';
+import { toast } from '@/components/ui/use-toast';
 
 const allNavigation = [
   { name: 'Dashboard', href: '/', icon: Home, roles: ['administrador', 'tecnico', 'atendente'] },
@@ -34,16 +39,124 @@ const allNavigation = [
   { name: 'Configurações', href: '/configuracoes', icon: Settings, roles: ['administrador'] },
 ];
 
+const passwordRulesText = 'A senha deve ter no mínimo 8 caracteres, incluir pelo menos 1 letra minúscula, 1 maiúscula, 1 número e 1 caractere especial.';
+
+const validatePasswordStrength = (value) => {
+  if (value.length < 8) return passwordRulesText;
+  if (!/[a-z]/.test(value)) return passwordRulesText;
+  if (!/[A-Z]/.test(value)) return passwordRulesText;
+  if (!/[0-9]/.test(value)) return passwordRulesText;
+  if (!/[^A-Za-z0-9]/.test(value)) return passwordRulesText;
+  return '';
+};
+
 const Layout = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [profileMenuOpen, setProfileMenuOpen] = useState(false);
+  const [showChangePasswordModal, setShowChangePasswordModal] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
 
+  const openChangePasswordModal = () => {
+    setPasswordError('');
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setProfileMenuOpen(false);
+    setShowChangePasswordModal(true);
+  };
+
+  const closeChangePasswordModal = () => {
+    setShowChangePasswordModal(false);
+    setPasswordError('');
+    setCurrentPassword('');
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowCurrentPassword(false);
+    setShowNewPassword(false);
+    setShowConfirmPassword(false);
+    setChangingPassword(false);
+  };
+
   const handleLogout = async () => {
     await signOut();
     navigate('/login');
+  };
+
+  const handlePasswordChange = async (event) => {
+    event.preventDefault();
+
+    if (!user?.email) {
+      setPasswordError('Não foi possível identificar o usuário logado.');
+      return;
+    }
+
+    if (!currentPassword || !newPassword || !confirmPassword) {
+      setPasswordError('Preencha a senha atual, a nova senha e a confirmação.');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setPasswordError('A confirmação da nova senha não confere.');
+      return;
+    }
+
+    const strengthError = validatePasswordStrength(newPassword);
+    if (strengthError) {
+      setPasswordError(strengthError);
+      return;
+    }
+
+    if (currentPassword === newPassword) {
+      setPasswordError('A nova senha deve ser diferente da senha atual.');
+      return;
+    }
+
+    try {
+      setChangingPassword(true);
+      setPasswordError('');
+
+      const { error: currentPasswordError } = await supabase.auth.signInWithPassword({
+        email: user.email,
+        password: currentPassword,
+      });
+
+      if (currentPasswordError) {
+        throw new Error('Senha atual incorreta.');
+      }
+
+      const { error: updateError } = await supabase.auth.updateUser({
+        password: newPassword,
+      });
+
+      if (updateError) {
+        throw updateError;
+      }
+
+      toast({
+        title: 'Senha atualizada',
+        description: 'Sua senha foi alterada com sucesso.',
+      });
+
+      closeChangePasswordModal();
+    } catch (error) {
+      console.error('Erro ao trocar senha:', error);
+      setPasswordError(error?.message || 'Não foi possível trocar a senha. Tente novamente.');
+    } finally {
+      setChangingPassword(false);
+    }
   };
 
   const userRole = user?.user_metadata?.role || 'atendente';
@@ -106,9 +219,16 @@ const Layout = ({ children }) => {
                   initial={{ opacity: 0, y: -10 }}
                   animate={{ opacity: 1, y: 0 }}
                   exit={{ opacity: 0, y: -10 }}
-                  className="absolute right-0 mt-2 w-48 bg-white/10 backdrop-blur-xl rounded-lg shadow-lg border border-white/20"
+                  className="absolute right-0 mt-2 w-56 bg-white/10 backdrop-blur-xl rounded-lg shadow-lg border border-white/20"
                 >
-                  <div className="p-2">
+                  <div className="p-2 space-y-1">
+                    <button
+                      onClick={openChangePasswordModal}
+                      className="w-full flex items-center px-3 py-2 text-sm text-white hover:bg-white/10 rounded-md"
+                    >
+                      <KeyRound className="w-4 h-4 mr-2" />
+                      Trocar a senha
+                    </button>
                     <button
                       onClick={handleLogout}
                       className="w-full flex items-center px-3 py-2 text-sm text-red-400 hover:bg-white/10 rounded-md"
@@ -186,6 +306,119 @@ const Layout = ({ children }) => {
               </nav>
             </motion.div>
           </>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showChangePasswordModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-50 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={closeChangePasswordModal}
+          >
+            <motion.div
+              initial={{ scale: 0.96, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.96, opacity: 0 }}
+              transition={{ duration: 0.15 }}
+              className="w-full max-w-md rounded-2xl border border-white/20 bg-slate-900/95 p-6 shadow-2xl"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-xl font-semibold text-white">Trocar a senha</h2>
+                <button
+                  type="button"
+                  onClick={closeChangePasswordModal}
+                  className="text-gray-400 hover:text-white transition-colors"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <form onSubmit={handlePasswordChange} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">Senha atual</label>
+                  <div className="relative">
+                    <input
+                      type={showCurrentPassword ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(event) => setCurrentPassword(event.target.value)}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 pr-10 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Digite sua senha atual"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPassword((value) => !value)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    >
+                      {showCurrentPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">Nova senha</label>
+                  <div className="relative">
+                    <input
+                      type={showNewPassword ? 'text' : 'password'}
+                      value={newPassword}
+                      onChange={(event) => setNewPassword(event.target.value)}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 pr-10 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Digite a nova senha"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPassword((value) => !value)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    >
+                      {showNewPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-200 mb-2">Confirmar nova senha</label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={confirmPassword}
+                      onChange={(event) => setConfirmPassword(event.target.value)}
+                      className="w-full rounded-lg border border-white/20 bg-white/5 px-3 py-2 pr-10 text-white placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="Repita a nova senha"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword((value) => !value)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-white"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 px-3 py-2 text-xs text-blue-100">
+                  {passwordRulesText}
+                </div>
+
+                {passwordError && (
+                  <div className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
+                    {passwordError}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-3 pt-2">
+                  <Button type="button" variant="outline" onClick={closeChangePasswordModal} className="border-white/20 text-white hover:bg-white/10">
+                    Cancelar
+                  </Button>
+                  <Button type="submit" disabled={changingPassword} className="bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white">
+                    {changingPassword ? 'Salvando...' : 'Salvar senha'}
+                  </Button>
+                </div>
+              </form>
+            </motion.div>
+          </motion.div>
         )}
       </AnimatePresence>
 

@@ -21,11 +21,13 @@ import RecentActivity from '@/components/RecentActivity';
 import UpcomingInspections from '@/components/UpcomingInspections';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/SupabaseAuthContext';
+import { useCompanyId } from '@/hooks/useCompanyId';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const resolveCompanyId = useCompanyId();
 
   const [stats, setStats] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -54,22 +56,36 @@ const Dashboard = () => {
   const fetchDashboardStats = async () => {
     setLoading(true);
 
+    const companyId = await resolveCompanyId();
+    if (!companyId) {
+      setStats([
+        { title: 'Pedidos Pendentes', value: 0, icon: FileText, color: 'from-blue-500 to-blue-600' },
+        { title: 'Inspeções Hoje', value: 0, icon: Clock, color: 'from-orange-500 to-orange-600' },
+        { title: 'Concluídas (Mês)', value: 0, icon: CheckCircle, color: 'from-green-500 to-green-600' },
+        { title: 'Não Conformes', value: 0, icon: AlertTriangle, color: 'from-red-500 to-red-600' }
+      ]);
+      setLoading(false);
+      return;
+    }
+
     const [
       pedidosPendentes,
       inspecoesHoje,
       concluidasMes,
       naoConformes
     ] = await Promise.all([
-      supabase.from('pedidos').select('id', { count: 'exact', head: true }).eq('status', 'pendente'),
+      supabase.from('pedidos').select('id', { count: 'exact', head: true }).eq('xid_empresa', companyId).eq('status', 'pendente'),
 
       supabase
         .from('ordem_servico')
         .select('id', { count: 'exact', head: true })
+        .eq('xid_empresa', companyId)
         .eq('data_agendada', today),
 
       supabase
         .from('ordem_servico')
         .select('id', { count: 'exact', head: true })
+        .eq('xid_empresa', companyId)
         .in('status', ['concluido', 'concluida'])
         .gte('data_conclusao', monthStart)
         .lt('data_conclusao', nextMonthStart),
@@ -77,6 +93,7 @@ const Dashboard = () => {
       supabase
         .from('ordem_servico')
         .select('id', { count: 'exact', head: true })
+        .eq('xid_empresa', companyId)
         .eq('status', 'nao_conforme')
     ]);
 

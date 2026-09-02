@@ -7,6 +7,7 @@ import {
   AlertTriangle,
   User
 } from 'lucide-react';
+import { useCompanyId } from '@/hooks/useCompanyId';
 import { supabase } from '@/lib/customSupabaseClient';
 
 /* ===== Helpers ===== */
@@ -65,6 +66,7 @@ const defaultConfig = {
 const RecentActivity = () => {
   const [activities, setActivities] = useState([]);
   const [loading, setLoading] = useState(true);
+  const resolveCompanyId = useCompanyId();
 
   useEffect(() => {
     fetchRecentActivities();
@@ -72,6 +74,13 @@ const RecentActivity = () => {
 
   const fetchRecentActivities = async () => {
     setLoading(true);
+
+    const companyId = await resolveCompanyId();
+    if (!companyId) {
+      setActivities([]);
+      setLoading(false);
+      return;
+    }
 
     const { data, error } = await supabase
       .from('ordem_servico')
@@ -83,6 +92,7 @@ const RecentActivity = () => {
         created_at,
         tecnico:tecnico_id ( nome )
       `)
+      .eq('xid_empresa', companyId)
       .neq('status', 'pendente')
       .limit(20);
 

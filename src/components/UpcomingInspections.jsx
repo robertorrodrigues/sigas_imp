@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Calendar, MapPin, User, Clock } from 'lucide-react';
+import { useCompanyId } from '@/hooks/useCompanyId';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const getToday = () => {
@@ -11,6 +12,7 @@ const getToday = () => {
 const UpcomingInspections = () => {
   const [inspections, setInspections] = useState([]);
   const [loading, setLoading] = useState(true);
+  const resolveCompanyId = useCompanyId();
 
   useEffect(() => {
     fetchTodayInspections();
@@ -18,6 +20,13 @@ const UpcomingInspections = () => {
 
   const fetchTodayInspections = async () => {
     setLoading(true);
+
+    const companyId = await resolveCompanyId();
+    if (!companyId) {
+      setInspections([]);
+      setLoading(false);
+      return;
+    }
 
     const today = getToday();
 
@@ -33,6 +42,7 @@ const UpcomingInspections = () => {
         tecnico:tecnico_id ( nome ),
         pedidos:pedido_id ( cliente_nome )
       `)
+      .eq('xid_empresa', companyId)
       .eq('data_agendada', today)
       .order('numero', { ascending: true })
       .limit(5);

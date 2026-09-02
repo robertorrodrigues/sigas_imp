@@ -4,6 +4,7 @@ import { Calendar, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import AgendaCalendar from '@/components/AgendaCalendar';
 import TechnicianSchedule from '@/components/TechnicianSchedule';
+import { useCompanyId } from '@/hooks/useCompanyId';
 import { supabase } from '@/lib/customSupabaseClient';
 
 const getLocalDate = (date) => {
@@ -17,12 +18,19 @@ const Agenda = () => {
   const [viewMode, setViewMode] = useState('calendar');
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [osList, setOsList] = useState([]);
+  const resolveCompanyId = useCompanyId();
 
   useEffect(() => {
     fetchOS();
   }, []);
 
   const fetchOS = async () => {
+    const companyId = await resolveCompanyId();
+    if (!companyId) {
+      setOsList([]);
+      return;
+    }
+
     const { data, error } = await supabase
       .from('ordem_servico')
       .select(`
@@ -36,6 +44,7 @@ const Agenda = () => {
         tecnico:tecnico_id ( id, nome ),
         pedidos:pedido_id ( cliente_nome )
       `)
+      .eq('xid_empresa', companyId)
       .order('data_agendada');
 
     if (error) {
