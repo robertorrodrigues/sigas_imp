@@ -13,7 +13,7 @@ const TechnicianForm = ({ tecnico, onClose, onSubmit }) => {
     // manter compatibilidade: singular 'especialidade' no banco, mas permitir múltiplas seleções na UI
     especialidade: '',
     specialties: [],
-    region: '',
+    area_atuacao: '',
     crea_numero: '',
     crea_uf: '',
     crea_validade: '',
@@ -29,7 +29,7 @@ const TechnicianForm = ({ tecnico, onClose, onSubmit }) => {
         telefone: tecnico.telefone ?? tecnico.phone ?? '',
         especialidade: tecnico.especialidade ?? '',
         specialties: tecnico.especialidade ? tecnico.especialidade.split(',').map(s => s.trim()) : [],
-        region: tecnico.region ?? '',
+        area_atuacao: tecnico.area_atuacao ?? tecnico.region ?? '',
         crea_numero: tecnico.crea_numero ?? '',
         crea_uf: tecnico.crea_uf ?? '',
         crea_validade: tecnico.crea_validade ?? tecnico.credentialExpiry ?? '',
@@ -195,8 +195,8 @@ const TechnicianForm = ({ tecnico, onClose, onSubmit }) => {
                 Região de Atuação
               </label>
               <select
-                name="region"
-                value={formData.region}
+                name="area_atuacao"
+                value={formData.area_atuacao}
                 onChange={handleChange}
                 className="w-full px-4 py-3 bg-black/100 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
@@ -227,8 +227,9 @@ const TechnicianForm = ({ tecnico, onClose, onSubmit }) => {
                 Crea - Região (UF)
               </label>
               <select
-                name="uf"
-                value={formData.uf}
+                name="crea_uf"
+                value={formData.crea_uf}
+                required
                 onChange={handleChange}
                 className="w-full px-4 py-3 bg-black/100 border border-white/20 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
