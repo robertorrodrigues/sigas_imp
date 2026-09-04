@@ -29,7 +29,11 @@ import {
 
 
 const UserForm = ({ user, onSave, onCancel }) => {
-  const [formData, setFormData] = useState(user || { name: '', email: '', role: 'administrador' });
+  const [formData, setFormData] = useState(user || { name: '', email: '', password: '', role: 'administrador' });
+
+  useEffect(() => {
+    setFormData(user || { name: '', email: '', password: '', role: 'administrador' });
+  }, [user]);
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -46,6 +50,9 @@ const UserForm = ({ user, onSave, onCancel }) => {
     <form onSubmit={handleSubmit} className="space-y-4">
       <input type="text" name="name" value={formData.name} onChange={handleChange} placeholder="Nome" required className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
       <input type="email" name="email" value={formData.email} onChange={handleChange} placeholder="Email" required className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      {!user && (
+        <input type="password" name="password" value={formData.password} onChange={handleChange} placeholder="Senha" minLength={6} required className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+      )}
       <select name="role" value={formData.role} onChange={handleChange} className="w-full px-4 py-3 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500">
         <option value="administrador">Administrador</option>
         <option value="tecnico">Técnico</option>
@@ -58,7 +65,13 @@ const UserForm = ({ user, onSave, onCancel }) => {
       </label>
 
       <label className="flex items-center gap-2">
-        <input type="checkbox" name="validation" checked={!!formData.validation} onChange={handleChange} className="w-4 h-4" />
+        <input
+          type="checkbox"
+          name="validation"
+          checked={!!(formData.validation ?? formData.validador)}
+          onChange={handleChange}
+          className="w-4 h-4"
+        />
         <span className="text-sm text-gray-300">Validador</span>
       </label>
 
@@ -74,7 +87,7 @@ const UserForm = ({ user, onSave, onCancel }) => {
 
 const UserSettings = ({ openNewUserModal = false }) => {
   const { settings, updateSettings } = useSettings();
-  const { user } = useAuth();
+  const { user, signUp } = useAuth();
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUser, setEditingUser] = useState(null);
@@ -114,7 +127,7 @@ const UserSettings = ({ openNewUserModal = false }) => {
 
     let query = supabase
       .from('profiles')
-      .select('id, name, email, role, enabled, xid_empresa')
+      .select('id, name, email, role, enabled, validador, xid_empresa')
       .order('name', { ascending: true });
 
     if (resolvedCompanyId) {
@@ -165,55 +178,85 @@ const UserSettings = ({ openNewUserModal = false }) => {
   try {
     if (user.id) {
       // atualizar usuário existente
-      const resolvedCompanyId = await resolveCompanyId();
+      const profileUpdate = {
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        enabled: user.enabled ?? true,
+        validador: user.validador ?? user.validation ?? false,
+      };
 
-      let updateQuery = supabase
+      const updateQuery = supabase
         .from('profiles')
-        .update({
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          enabled: user.enabled ?? true,
-          validador: user.validation ?? false,
-          xid_empresa: resolvedCompanyId,
-        })
+        .update(profileUpdate)
         .eq('id', user.id);
 
-      if (resolvedCompanyId) {
-        updateQuery = updateQuery.eq('xid_empresa', resolvedCompanyId);
-      }
-
+      // A RLS policy validates that the selected profile belongs to the current
+      // user's company. Avoid filtering by xid_empresa here because legacy
+      // profiles may contain a stale or null company value.
       const { error } = await updateQuery;
 
       if (error) {
         toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' });
       } else {
-        toast({ title: 'Usuário atualizado' });
-        setIsDialogOpen(false);
-        setEditingUser(null);
-        await fetchProfiles();
+        const { data: updatedUsers, error: verifyError } = await supabase
+          .from('profiles')
+          .select('id, name, email, role, enabled, validador')
+          .eq('id', user.id);
+
+        if (verifyError) {
+          toast({ title: 'Erro ao verificar atualização', description: verifyError.message, variant: 'destructive' });
+        } else if (
+          !updatedUsers?.length ||
+          Object.entries(profileUpdate).some(([field, value]) => updatedUsers[0][field] !== value)
+        ) {
+          toast({
+            title: 'Usuário não atualizado',
+            description: 'A política de acesso do banco impediu a alteração deste usuário.',
+            variant: 'destructive',
+          });
+        } else {
+          toast({ title: 'Usuário atualizado' });
+          setIsDialogOpen(false);
+          setEditingUser(null);
+          await fetchProfiles();
+        }
       }
     } else {
-      // inserir novo registro em profiles
+      // Cria a identidade primeiro; a RLS de profiles exige um usuário autenticado.
       const resolvedCompanyId = await resolveCompanyId();
+      if (!resolvedCompanyId) {
+        throw new Error('Não foi possível identificar a empresa do usuário logado.');
+      }
 
-      const { data, error } = await supabase
-        .from('profiles')
-        .insert([{
+      const { data: currentSessionData, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError) {
+        throw sessionError;
+      }
+
+      const { error } = await signUp(user.email, user.password, {
+        data: {
           name: user.name,
-          email: user.email,
           role: user.role,
           enabled: user.enabled ?? true,
-          validador: user.validation ?? false,
+          validador: user.validador ?? user.validation ?? false,
           xid_empresa: resolvedCompanyId,
-        }])
-        .select() // retorna o registro inserido
-        .single();
+        },
+      });
+
+      // signUp may switch the client session to the newly created account.
+      // Restore the administrator session so the settings screen remains usable.
+      if (currentSessionData.session) {
+        const { error: restoreError } = await supabase.auth.setSession(currentSessionData.session);
+        if (restoreError) {
+          throw restoreError;
+        }
+      }
 
       if (error) {
         toast({ title: 'Erro ao criar usuário', description: error.message, variant: 'destructive' });
       } else {
-        toast({ title: 'Usuário criado', description: data.email });
+        toast({ title: 'Usuário criado', description: user.email });
         setIsDialogOpen(false);
         setEditingUser(null);
         await fetchProfiles();
