@@ -144,7 +144,43 @@ export const AuthProvider = ({ children }) => {
             title: 'Sign in Failed',
             description: error.message || 'Something went wrong',
           });
+          return { data, error };
         }
+
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('enabled')
+          .eq('id', data.user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.error('Supabase profile status lookup error:', profileError);
+          await supabase.auth.signOut();
+          setUser(null);
+          setSession(null);
+          toast({
+            variant: 'destructive',
+            title: 'Sign in Failed',
+            description: 'Não foi possível validar o status do usuário.',
+          });
+          return { data: null, error: profileError };
+        }
+
+        if (profile?.enabled === false) {
+          const blockedError = new Error(
+            'Seu acesso está inativo, entre em contato com o Help Desk'
+          );
+          await supabase.auth.signOut();
+          setUser(null);
+          setSession(null);
+          toast({
+            variant: 'destructive',
+            title: 'Usuário bloqueado',
+            description: blockedError.message,
+          });
+          return { data: null, error: blockedError };
+        }
+
         return { data, error };
       } catch (err) {
         console.error('Unexpected signIn error:', err);
