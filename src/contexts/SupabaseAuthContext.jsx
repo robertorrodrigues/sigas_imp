@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
           const msg = 'Email e senha devem ser strings.';
           toast({
             variant: 'destructive',
-            title: 'Sign up Failed',
+            title: 'Cadastro falhou',
             description: msg,
           });
           return { data: null, error: new Error(msg) };
@@ -79,8 +79,8 @@ export const AuthProvider = ({ children }) => {
           console.error('Supabase SignUp Error:', error);
           toast({
             variant: 'destructive',
-            title: 'Sign up Failed',
-            description: error.message || 'Something went wrong',
+            title: 'Cadastro falhou',
+            description: error.message || 'Ocorreu um erro inesperado.',
           });
         } else if (data?.user) {
           try {
@@ -120,7 +120,7 @@ export const AuthProvider = ({ children }) => {
         console.error('Unexpected signUp error:', err);
         toast({
           variant: 'destructive',
-          title: 'Sign up Failed',
+          title: 'Cadastro falhou',
           description: 'Erro inesperado ao cadastrar.',
         });
         return { data: null, error: err };
@@ -141,8 +141,8 @@ export const AuthProvider = ({ children }) => {
           console.error('Supabase SignIn Error:', error);
           toast({
             variant: 'destructive',
-            title: 'Sign in Failed',
-            description: error.message || 'Something went wrong',
+            title: 'Login falhou',
+            description: 'Erro na validação, verifique suas credenciais.',
           });
           return { data, error };
         }
@@ -160,7 +160,7 @@ export const AuthProvider = ({ children }) => {
           setSession(null);
           toast({
             variant: 'destructive',
-            title: 'Sign in Failed',
+            title: 'Login falhou',
             description: 'Não foi possível validar o status do usuário.',
           });
           return { data: null, error: profileError };
@@ -186,7 +186,7 @@ export const AuthProvider = ({ children }) => {
         console.error('Unexpected signIn error:', err);
         toast({
           variant: 'destructive',
-          title: 'Sign in Failed',
+          title: 'Login falhou',
           description: 'Erro inesperado ao entrar.',
         });
         return { data: null, error: err };
@@ -214,8 +214,8 @@ export const AuthProvider = ({ children }) => {
           console.error('Supabase SignOut Error:', error);
           toast({
             variant: 'destructive',
-            title: 'Sign out Failed',
-            description: error.message || 'Something went wrong',
+            title: 'Deslogar falhou',
+            description: error.message || 'Ocorreu um erro inesperado.',
           });
           return { error };
         }
@@ -228,7 +228,7 @@ export const AuthProvider = ({ children }) => {
       console.error('Unexpected signOut error:', err);
       toast({
         variant: 'destructive',
-        title: 'Sign out Failed',
+        title: 'Deslogar falhou',
         description: 'Erro inesperado ao sair.',
       });
       setUser(null);
