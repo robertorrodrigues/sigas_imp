@@ -18,6 +18,8 @@ const TechnicianForm = ({ tecnico, onClose, onSubmit }) => {
     crea_uf: '',
     crea_validade: '',
     status: 'ativo',
+    foto_url: null,
+    foto_metadata: null,
   });
 
   useEffect(() => {
@@ -34,6 +36,8 @@ const TechnicianForm = ({ tecnico, onClose, onSubmit }) => {
         crea_uf: tecnico.crea_uf ?? '',
         crea_validade: tecnico.crea_validade ?? tecnico.credentialExpiry ?? '',
         status: tecnico.status ?? 'ativo',
+        foto_url: tecnico.foto_url ?? null,
+        foto_metadata: tecnico.foto_metadata ?? null,
       });
     }
   }, [tecnico]);
@@ -73,13 +77,51 @@ const TechnicianForm = ({ tecnico, onClose, onSubmit }) => {
     });
   };
 
-  const handleCredentialUpload = (e) => {
+  const handleCredentialUpload = async (e) => {
     const file = e.target.files[0];
-    if (file) {
-      setCredentials(file);
+    e.target.value = '';
+
+    if (!file) return;
+
+    if (!file.type.startsWith('image/')) {
       toast({
-        title: "Credencial anexada!",
+        title: 'Arquivo inválido',
+        description: 'Selecione uma imagem para anexar as credenciais.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      const dataUrl = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(new Error('Não foi possível ler a imagem.'));
+        reader.readAsDataURL(file);
+      });
+
+      const metadata = {
+        name: file.name,
+        type: file.type,
+        size: file.size,
+        lastModified: file.lastModified,
+      };
+
+      setCredentials({ name: file.name });
+      setFormData(prev => ({
+        ...prev,
+        foto_url: dataUrl,
+        foto_metadata: metadata,
+      }));
+      toast({
+        title: 'Credencial anexada!',
         description: `${file.name} foi anexado com sucesso.`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Erro ao anexar credencial',
+        description: error.message,
+        variant: 'destructive',
       });
     }
   };
@@ -260,11 +302,19 @@ const TechnicianForm = ({ tecnico, onClose, onSubmit }) => {
             </label>
             <div className="border-2 border-dashed border-white/20 rounded-xl p-6 text-center">
               <Upload className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+              {formData.foto_url && (
+                <img
+                  src={formData.foto_url}
+                  alt={`Imagem de ${formData.nome || 'técnico'}`}
+                  className="max-h-48 max-w-full mx-auto mb-4 rounded-lg object-contain"
+                />
+              )}
               <p className="text-gray-400 mb-2">
                 {credentials ? credentials.name : 'Clique para anexar as credenciais'}
               </p>
               <input
                 type="file"
+                accept="image/*"
                 onChange={handleCredentialUpload}
                 className="hidden"
                 id="credential-upload"

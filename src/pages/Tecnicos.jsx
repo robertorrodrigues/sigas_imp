@@ -19,6 +19,30 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
+const formatCpf = (cpf) => {
+  const digits = String(cpf ?? '').replace(/\D/g, '');
+
+  if (digits.length !== 11) return cpf || '—';
+
+  return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+};
+
+const formatPhone = (phone) => {
+  const digits = String(phone ?? '').replace(/\D/g, '');
+
+  if (digits.length !== 11) return phone || '—';
+
+  return digits.replace(/(\d{2})(\d{4})(\d{5})/, '($1) $2.$3');
+};
+
+const formatCrea = (crea) => {
+  const digits = String(crea ?? '').replace(/\D/g, '');
+
+  if (digits.length !== 9) return crea || '—';
+
+  return digits.replace(/(\d{2})(\d{3})(\d{3})(\d{1})/, '$1.$2.$3-$4');
+};
+
 const Tecnicos = () => {
   const [showForm, setShowForm] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
@@ -99,6 +123,8 @@ const Tecnicos = () => {
             status: formData.status,
             data_atualizacao: new Date().toISOString(),
             xid_empresa: resolvedCompanyId,
+            foto_url: formData.foto_url,
+            foto_metadata: formData.foto_metadata,
           })
           .eq('id', editingTecnico.id);
 
@@ -134,6 +160,8 @@ const Tecnicos = () => {
             data_admissao: new Date().toISOString().split('T')[0],
             criado_por: user?.id,
             xid_empresa: resolvedCompanyId,
+            foto_url: formData.foto_url,
+            foto_metadata: formData.foto_metadata,
           }]);
 
         if (error) {
@@ -259,9 +287,9 @@ const Tecnicos = () => {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
-        className="bg-white/10 backdrop-blur-xl rounded-2xl p-6 border border-white/20"
+        className="bg-white/10 backdrop-blur-xl rounded-2xl p-4 sm:p-6 border border-white/20"
       >
-        <div className="flex flex-col md:flex-row gap-4">
+        <div className="flex flex-col md:flex-row gap-3 sm:gap-4">
           <div className="flex-1">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
@@ -274,17 +302,17 @@ const Tecnicos = () => {
               />
             </div>
           </div>
-          <div className="flex items-center space-x-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
             <select
               value={filterStatus}
               onChange={(e) => setFilterStatus(e.target.value)}
-              className="px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full sm:w-auto px-4 py-2 bg-slate-800 border border-slate-700 rounded-xl text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="todos">Todos</option>
               <option value="ativo">Ativos</option>
               <option value="inativo">Inativos</option>
             </select>
-            <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">
+            <Button variant="outline" className="w-full sm:w-auto border-white/20 text-white hover:bg-white/10">
               <Filter className="w-4 h-4 mr-2" />
               Filtros
             </Button>
@@ -299,34 +327,36 @@ const Tecnicos = () => {
         transition={{ delay: 0.3 }}
         className="bg-white/5 rounded-2xl border border-white/10 overflow-hidden"
       >
-        <div className="overflow-x-auto">
-          <table className="w-full">
+        <div className="max-w-full overflow-x-auto overscroll-x-contain">
+          <table className="w-full min-w-[980px]">
             <thead className="bg-white/10 border-b border-white/10">
               <tr>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Nome</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">CPF</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Email</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Especialidade</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">CREA</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Status</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-gray-300">Ações</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-gray-300">Nome</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-gray-300">CPF</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-gray-300">Email</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-gray-300">Telefone/Celular</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-gray-300">Especialidade</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-gray-300">CREA</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-gray-300">Status</th>
+                <th className="px-3 sm:px-6 py-3 sm:py-4 text-left text-xs sm:text-sm font-semibold text-gray-300">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-white/10">
               {loading && (
-                <tr><td colSpan="7" className="px-6 py-4 text-gray-400">Carregando...</td></tr>
+                <tr><td colSpan="8" className="px-6 py-4 text-gray-400">Carregando...</td></tr>
               )}
               {!loading && filteredTecnicos.length === 0 && (
-                <tr><td colSpan="7" className="px-6 py-4 text-gray-400">Nenhum técnico encontrado</td></tr>
+                <tr><td colSpan="8" className="px-6 py-4 text-gray-400">Nenhum técnico encontrado</td></tr>
               )}
               {filteredTecnicos.map(tecnico => (
                 <tr key={tecnico.id} className="hover:bg-white/5 transition">
-                  <td className="px-6 py-4 text-white font-medium">{tecnico.nome}</td>
-                  <td className="px-6 py-4 text-gray-300">{tecnico.cpf}</td>
-                  <td className="px-6 py-4 text-gray-300 text-sm">{tecnico.email}</td>
-                  <td className="px-6 py-4 text-gray-300">{tecnico.especialidade || '—'}</td>
-                  <td className="px-6 py-4 text-gray-300 text-sm">
-                    {tecnico.crea_numero ? `${tecnico.crea_numero}/${tecnico.crea_uf}` : '—'}
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-white font-medium">{tecnico.nome}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-300 text-xs whitespace-nowrap">{formatCpf(tecnico.cpf)}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-300 text-sm">{tecnico.email}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-300 text-xs whitespace-nowrap">{formatPhone(tecnico.telefone)}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-300">{tecnico.especialidade || '—'}</td>
+                  <td className="px-3 sm:px-6 py-3 sm:py-4 text-gray-300 text-sm">
+                    {tecnico.crea_numero ? `${formatCrea(tecnico.crea_numero)}/${tecnico.crea_uf}` : '—'}
                     {tecnico.crea_validade && (
                       <span className={`ml-2 text-xs ${
                         new Date(tecnico.crea_validade) < new Date() ? 'text-red-400' :
@@ -337,14 +367,14 @@ const Tecnicos = () => {
                       </span>
                     )}
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                       tecnico.status === 'ativo' ? 'bg-green-500/20 text-green-300' : 'bg-red-500/20 text-red-300'
                     }`}>
                       {tecnico.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4">
+                  <td className="px-3 sm:px-6 py-3 sm:py-4">
                     <div className="flex gap-2">
                       <Button
                         variant="ghost"
